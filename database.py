@@ -5,15 +5,27 @@ import os
 
 load_dotenv()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "mysql+pymysql://root:@localhost:3306/bookweb"
+# 嘗試多種 Railway 可能給的變數名稱
+DATABASE_URL = (
+    os.getenv("DATABASE_URL") or
+    os.getenv("MYSQL_URL") or
+    os.getenv("MYSQL_PRIVATE_URL")
 )
 
-# Railway 給的 MySQL URL 開頭是 mysql:// 或 mysql2://，SQLAlchemy 需要 mysql+pymysql://
-if DATABASE_URL.startswith("mysql://") or DATABASE_URL.startswith("mysql2://"):
-    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
-    DATABASE_URL = DATABASE_URL.replace("mysql2://", "mysql+pymysql://", 1)
+if DATABASE_URL:
+    # Railway 給的 mysql:// 或 mysql2:// 需換成 mysql+pymysql://
+    for prefix in ("mysql2://", "mysql://"):
+        if DATABASE_URL.startswith(prefix):
+            DATABASE_URL = "mysql+pymysql://" + DATABASE_URL[len(prefix):]
+            break
+else:
+    # 從個別環境變數組合（Railway MySQL plugin 也會提供這些）
+    host     = os.getenv("MYSQLHOST",     os.getenv("MYSQL_HOST",     "localhost"))
+    port     = os.getenv("MYSQLPORT",     os.getenv("MYSQL_PORT",     "3306"))
+    user     = os.getenv("MYSQLUSER",     os.getenv("MYSQL_USER",     "root"))
+    password = os.getenv("MYSQLPASSWORD", os.getenv("MYSQL_PASSWORD", ""))
+    database = os.getenv("MYSQLDATABASE", os.getenv("MYSQL_DATABASE", "bookweb"))
+    DATABASE_URL = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
 
 engine = create_engine(
     DATABASE_URL,
