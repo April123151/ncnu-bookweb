@@ -7,8 +7,13 @@ load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://root:password@localhost:3306/bookweb"
+    "mysql+pymysql://root:@localhost:3306/bookweb"
 )
+
+# Railway 給的 MySQL URL 開頭是 mysql:// 或 mysql2://，SQLAlchemy 需要 mysql+pymysql://
+if DATABASE_URL.startswith("mysql://") or DATABASE_URL.startswith("mysql2://"):
+    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("mysql2://", "mysql+pymysql://", 1)
 
 engine = create_engine(
     DATABASE_URL,
