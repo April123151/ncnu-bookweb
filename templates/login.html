@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}登入 ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <div class="auth-icon"><i class="bi bi-book-half"></i></div>
+  <h2>學生登入</h2>
+  <p class="auth-sub">使用暨大學號登入</p>
+
+  <form method="POST" action="{{ url_for('login') }}">
+    <div class="mb-3">
+      <label class="form-label">學號</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-person"></i></span>
+        <input type="text" class="form-control" name="student_id"
+               placeholder="例：s112213001" required autofocus>
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">密碼</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+        <input type="password" class="form-control" name="password"
+               id="pwd" placeholder="請輸入密碼" required>
+        <button class="btn btn-outline-secondary" type="button" id="togglePwd">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 fw-semibold py-2">登入</button>
+  </form>
+
+  <hr class="my-4">
+  <p class="text-center text-muted small mb-0">
+    還沒有帳號？<a href="{{ url_for('register_page') }}" class="fw-semibold">立即免費註冊</a>
+  </p>
+</div>
+
+{% block scripts %}
+<script>
+document.getElementById('togglePwd').addEventListener('click', function(){
+  const inp = document.getElementById('pwd');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  this.querySelector('i').className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}我的上架 ─ 暨大二手書平台{% endblock %}
+{% block content %}
+
+<div class="section-header">
+  <div>
+    <h1 class="section-title"><i class="bi bi-list-ul text-primary me-2"></i>我的上架書籍</h1>
+    <p class="section-sub">管理您所有上架中的書籍與交易狀態</p>
+  </div>
+  <a href="{{ url_for('sell_page') }}" class="btn btn-primary fw-semibold">
+    <i class="bi bi-plus-lg me-1"></i>上架新書
+  </a>
+</div>
+
+{% if books %}
+
+<!-- Stats -->
+{% set avail  = books | selectattr('status','eq','available') | list %}
+{% set locked = books | selectattr('status','eq','locked')    | list %}
+{% set sold   = books | selectattr('status','eq','sold')      | list %}
+<div class="stat-row">
+  <div class="stat-card stat-available">
+    <div class="num">{{ avail|length }}</div>
+    <div class="lbl">上架中</div>
+  </div>
+  <div class="stat-card stat-locked">
+    <div class="num">{{ locked|length }}</div>
+    <div class="lbl">交易中</div>
+  </div>
+  <div class="stat-card stat-sold">
+    <div class="num">{{ sold|length }}</div>
+    <div class="lbl">已售出</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="color:var(--text)">{{ books|length }}</div>
+    <div class="lbl">總上架數</div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="data-table">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>書籍</th>
+          <th>售價</th>
+          <th>書況</th>
+          <th>系所</th>
+          <th>狀態</th>
+          <th>上架日期</th>
+          <th class="text-center">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for book in books %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-3">
+              {% if book.first_photo %}
+                <img src="{{ book.first_photo }}"
+                     class="thumb-table" alt="">
+              {% else %}
+                <div class="thumb-table-ph">
+                  <i class="bi bi-book" style="color:#86efac"></i>
+                </div>
+              {% endif %}
+              <div>
+                <a href="{{ url_for('book_detail', book_id=book.id) }}"
+                   class="fw-semibold text-dark text-decoration-none d-block">
+                  {{ book.title }}
+                </a>
+                <span class="text-muted small">{{ book.author or '─' }}</span>
+              </div>
+            </div>
+          </td>
+          <td class="fw-bold" style="color:var(--green-main)">NT${{ book.price }}</td>
+          <td><span class="badge-cond cond-{{ book.condition }}">{{ book.condition_label }}</span></td>
+          <td class="text-muted small" style="max-width:140px">{{ book.department }}</td>
+          <td>
+            {% if book.status == 'available' %}
+              <span class="badge-cond badge-status-available px-2 py-1 rounded-pill">上架中</span>
+            {% elif book.status == 'locked' %}
+              <span class="badge-cond badge-status-locked px-2 py-1 rounded-pill">交易中</span>
+            {% else %}
+              <span class="badge-cond badge-status-sold px-2 py-1 rounded-pill">已售出</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ book.created_at.strftime('%Y/%m/%d') }}</td>
+          <td class="text-center">
+            {% set ao = book.active_order %}
+            {% if book.status == 'locked' and ao %}
+            <div class="text-center">
+              <div class="small text-muted mb-1">買家：{{ ao.buyer.name }}</div>
+              <div class="d-flex gap-1 justify-content-center">
+                <form method="POST" action="{{ url_for('complete_order', order_id=ao.id) }}">
+                  <button class="btn btn-success btn-sm fw-semibold"
+                          onclick="return confirm('確認交易完成？')">
+                    <i class="bi bi-check-lg"></i> 完成
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('cancel_order', order_id=ao.id) }}">
+                  <button class="btn btn-outline-danger btn-sm"
+                          onclick="return confirm('確認取消交易？')">取消</button>
+                </form>
+              </div>
+            </div>
+            {% elif book.status == 'available' %}
+            <div class="d-flex gap-1 justify-content-center">
+              <a href="{{ url_for('book_detail', book_id=book.id) }}"
+                 class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-eye"></i>
+              </a>
+              <form method="POST" action="{{ url_for('delete_book', book_id=book.id) }}">
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('確定刪除此書籍？')">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+            {% else %}
+            <span class="text-muted">─</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-box-seam"></i>
+  <p>您還沒有上架任何書籍</p>
+  <a href="{{ url_for('sell_page') }}" class="btn btn-primary">立即上架</a>
+</div>
+{% endif %}
+
+{% endblock %}

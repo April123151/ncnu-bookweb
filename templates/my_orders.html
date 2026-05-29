@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}我的訂單 ─ 暨大二手書平台{% endblock %}
+{% block content %}
+
+<div class="section-header">
+  <div>
+    <h1 class="section-title"><i class="bi bi-bag-check text-primary me-2"></i>我的訂單</h1>
+    <p class="section-sub">您以買家身份下的所有訂單</p>
+  </div>
+</div>
+
+{% if orders %}
+{% for order in orders %}
+<div class="order-card">
+  <div class="order-card-body">
+
+    <!-- Photo -->
+    <div>
+      {% if order.book.first_photo %}
+        <img src="{{ order.book.first_photo }}"
+             style="width:80px;height:80px;object-fit:cover;border-radius:8px" alt="">
+      {% else %}
+        <div style="width:80px;height:80px;border-radius:8px;background:var(--green-soft);
+                    display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-book" style="font-size:1.8rem;color:#86efac"></i>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Book info -->
+    <div>
+      <a href="{{ url_for('book_detail', book_id=order.book.id) }}"
+         class="fw-bold text-dark text-decoration-none d-block mb-1">
+        {{ order.book.title }}
+      </a>
+      <div class="text-muted small mb-1">{{ order.book.author or '（未填作者）' }}</div>
+      <div class="fw-bold mb-2" style="color:var(--green-main);font-size:1.05rem">
+        NT${{ order.book.price }}
+      </div>
+      <div class="d-flex gap-2">
+        <span class="badge-dept">{{ order.book.department }}</span>
+        <span class="badge-cond cond-{{ order.book.condition }}">{{ order.book.condition_label }}</span>
+      </div>
+    </div>
+
+    <!-- Timeslot & seller -->
+    <div>
+      <div class="small fw-semibold text-muted mb-2">面交資訊</div>
+      {% if order.timeslot %}
+      <div class="small mb-1">
+        <i class="bi bi-calendar3 me-1 text-muted"></i>
+        {{ order.timeslot.date }} {{ order.timeslot.time_str }}
+      </div>
+      <div class="small mb-2">
+        <i class="bi bi-geo-alt me-1 text-muted"></i>{{ order.timeslot.location }}
+      </div>
+      {% else %}
+      <div class="small text-muted mb-2">未選擇時段</div>
+      {% endif %}
+      <div class="small text-muted">
+        <i class="bi bi-person me-1"></i>賣家：{{ order.book.seller.name }}
+        {% if order.book.seller.phone %}
+        <span class="ms-1">（{{ order.book.seller.phone }}）</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Status & action -->
+    <div class="text-center">
+      {% if order.status == 'pending' %}
+        <span class="badge-cond badge-status-locked d-block px-2 py-2 rounded-pill fw-semibold mb-2">
+          交易中
+        </span>
+        <form method="POST" action="{{ url_for('cancel_order', order_id=order.id) }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm w-100"
+                  onclick="return confirm('確認取消此筆訂單？')">
+            取消訂單
+          </button>
+        </form>
+      {% elif order.status == 'completed' %}
+        <span class="badge-cond badge-status-available d-block px-2 py-2 rounded-pill fw-semibold">
+          <i class="bi bi-check-circle me-1"></i>交易完成
+        </span>
+      {% else %}
+        <span class="badge-cond badge-status-sold d-block px-2 py-2 rounded-pill fw-semibold">
+          已取消
+        </span>
+      {% endif %}
+      <div class="text-muted small mt-2">{{ order.created_at.strftime('%Y/%m/%d') }}</div>
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="empty-state">
+  <i class="bi bi-bag"></i>
+  <p>您還沒有任何訂單</p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">去找書籍</a>
+</div>
+{% endif %}
+
+{% endblock %}

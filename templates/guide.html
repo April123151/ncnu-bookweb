@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+{% block title %}使用說明 ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}class="page-wrap-narrow"{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <h1 class="section-title"><i class="bi bi-journal-text text-primary me-2"></i>使用說明</h1>
+    <p class="section-sub">暨南國際大學二手教科書交換平台 ─ 完整操作指南</p>
+  </div>
+</div>
+
+<!-- 快速導覽 -->
+<div class="form-card mb-4">
+  <div class="form-card-header"><i class="bi bi-list-ul me-2"></i>目錄</div>
+  <div class="form-card-body">
+    <div class="row g-2">
+      {% set toc = [
+        ('#intro',    'bi-info-circle',   '平台介紹'),
+        ('#register', 'bi-person-plus',   '註冊與登入'),
+        ('#sell',     'bi-upload',        '上架書籍（賣家）'),
+        ('#buy',      'bi-search',        '搜尋與下單（買家）'),
+        ('#flow',     'bi-arrow-repeat',  '完整交易流程'),
+        ('#meetup',   'bi-geo-alt',       '面交注意事項'),
+        ('#faq',      'bi-question-circle','常見問題'),
+      ] %}
+      {% for href, icon, label in toc %}
+      <div class="col-6 col-md-4">
+        <a href="{{ href }}" class="d-flex align-items-center gap-2 p-2 rounded text-decoration-none"
+           style="color:var(--text);font-size:.85rem;transition:background .12s"
+           onmouseover="this.style.background='var(--green-soft)'"
+           onmouseout="this.style.background=''">
+          <i class="bi {{ icon }} text-primary"></i>{{ label }}
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- 1. 平台介紹 -->
+<section id="intro" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">1</span>
+    <h2>平台介紹</h2>
+  </div>
+  <div class="guide-body">
+    <p>
+      <strong>暨大二手書平台</strong>是專為暨南國際大學在學學生設計的教科書交換平台，
+      讓學長姐的二手書能以合理價格轉讓給有需要的同學。
+      所有交易以<strong>面交</strong>為主，安全可靠。
+    </p>
+    <div class="row g-3 mt-1">
+      <div class="col-md-4">
+        <div class="guide-feature-card">
+          <i class="bi bi-shield-check text-success"></i>
+          <strong>學號驗證</strong>
+          <p>僅限暨大學生使用學號註冊，確保交易安全</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="guide-feature-card">
+          <i class="bi bi-people text-primary"></i>
+          <strong>面交交易</strong>
+          <p>買賣雙方約定時間地點，在校內完成交易</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="guide-feature-card">
+          <i class="bi bi-lock text-warning"></i>
+          <strong>鎖定機制</strong>
+          <p>下單後書籍自動鎖定，防止重複購買</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 註冊與登入 -->
+<section id="register" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">2</span>
+    <h2>註冊與登入</h2>
+  </div>
+  <div class="guide-body">
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-dot">1</div>
+        <div>
+          <strong>點擊右上角「免費註冊」</strong>
+          <p>前往註冊頁面，填寫基本資料。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">2</div>
+        <div>
+          <strong>填寫學號、姓名、系所</strong>
+          <p>學號將作為登入帳號，請確認填寫正確（格式範例：<code>s112213001</code>）。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">3</div>
+        <div>
+          <strong>設定密碼並完成註冊</strong>
+          <p>密碼至少 6 個字元，建議使用英數字混合。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">4</div>
+        <div>
+          <strong>往後使用學號 + 密碼登入</strong>
+          <p>登入後即可上架書籍或瀏覽下單。</p>
+        </div>
+      </div>
+    </div>
+    <div class="guide-note">
+      <i class="bi bi-info-circle-fill me-1"></i>
+      聯絡電話為選填欄位，但建議填寫，方便交易對象聯絡。
+    </div>
+  </div>
+</section>
+
+<!-- 3. 上架書籍 -->
+<section id="sell" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">3</span>
+    <h2>上架書籍（賣家）</h2>
+  </div>
+  <div class="guide-body">
+    <p>登入後點擊導覽列的<strong>「上架書籍」</strong>，依序填寫以下資訊：</p>
+
+    <table class="guide-table">
+      <thead><tr><th>欄位</th><th>說明</th><th>是否必填</th></tr></thead>
+      <tbody>
+        <tr><td>書名</td><td>教科書完整書名</td><td><span class="badge bg-danger">必填</span></td></tr>
+        <tr><td>作者</td><td>作者姓名</td><td><span class="badge bg-secondary">選填</span></td></tr>
+        <tr><td>ISBN</td><td>書背條碼，有助買家確認版本</td><td><span class="badge bg-secondary">選填</span></td></tr>
+        <tr><td>售價</td><td>期望售出價格（NT$）</td><td><span class="badge bg-danger">必填</span></td></tr>
+        <tr><td>書況</td><td>全新 / 近全新 / 良好 / 普通 / 堪用</td><td><span class="badge bg-danger">必填</span></td></tr>
+        <tr><td>適用系所</td><td>此書所屬的課程系所</td><td><span class="badge bg-danger">必填</span></td></tr>
+        <tr><td>書況描述</td><td>補充說明，如筆記多寡、附光碟等</td><td><span class="badge bg-secondary">選填</span></td></tr>
+        <tr><td>書籍照片</td><td>可上傳多張，建議拍書封與書況</td><td><span class="badge bg-secondary">選填</span></td></tr>
+        <tr><td>面交時段</td><td>可新增多筆日期、時間、地點</td><td><span class="badge bg-secondary">建議填寫</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="guide-note mt-3">
+      <i class="bi bi-lightbulb-fill me-1 text-warning"></i>
+      <strong>小技巧：</strong>多新增幾個面交時段，讓買家有更多選擇，能更快成交。
+    </div>
+
+    <h5 class="mt-4 mb-2 fw-bold" style="font-size:.9rem">書況等級說明</h5>
+    <div class="row g-2">
+      {% for val, label, desc in [
+        ('new',        '全新',   '未拆封或完全未使用，書況完美'),
+        ('like_new',   '近全新', '翻閱極少，幾乎看不出使用痕跡'),
+        ('good',       '良好',   '正常使用痕跡，無明顯筆記或污損'),
+        ('fair',       '普通',   '有部分筆記、劃線或摺痕，不影響閱讀'),
+        ('acceptable', '堪用',   '書況較舊但仍可正常閱讀使用'),
+      ] %}
+      <div class="col-12">
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge-cond cond-{{ val }}" style="min-width:60px;text-align:center">{{ label }}</span>
+          <span style="font-size:.82rem;color:var(--text-muted)">{{ desc }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- 4. 搜尋與下單 -->
+<section id="buy" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">4</span>
+    <h2>搜尋與下單（買家）</h2>
+  </div>
+  <div class="guide-body">
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-dot">1</div>
+        <div>
+          <strong>搜尋書籍</strong>
+          <p>在首頁搜尋欄輸入<strong>書名、作者或 ISBN</strong>，或從左側依學院展開找到系所後點選篩選。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">2</div>
+        <div>
+          <strong>進階篩選書況</strong>
+          <p>在左側「依書況篩選」中選擇可接受的書況，縮小搜尋範圍。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">3</div>
+        <div>
+          <strong>點入書籍查看詳情</strong>
+          <p>確認書名、書況、照片、賣家資訊等，確認無誤後進行下單。</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">4</div>
+        <div>
+          <strong>選擇面交時間地點，按下「我要下單」</strong>
+          <p>
+            從賣家提供的時段中選擇適合的時間與地點，
+            按下下單後，書籍狀態即變為<span class="badge-cond badge-status-locked mx-1">交易中</span>，
+            其他買家無法再下單。
+          </p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-dot">5</div>
+        <div>
+          <strong>依約前往面交</strong>
+          <p>
+            請準時前往約定地點與賣家完成面交，
+            完成後由賣家在系統上按<strong>「確認交易完成」</strong>，書籍即正式下架。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 完整交易流程 -->
+<section id="flow" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">5</span>
+    <h2>完整交易流程</h2>
+  </div>
+  <div class="guide-body">
+    <div class="flow-wrap">
+      {% for step in [
+        ('bi-upload',           'green',  '賣家上架',     '填寫書籍資訊、上傳照片、設定面交時段'),
+        ('bi-search',           'blue',   '買家搜尋',     '透過關鍵字或系所分類找到書籍'),
+        ('bi-cart-plus',        'purple', '買家下單',     '選擇面交時段，按下「我要下單」'),
+        ('bi-lock-fill',        'orange', '書籍鎖定',     '書籍狀態變為「交易中」，防止重複下單'),
+        ('bi-people-fill',      'green',  '雙方面交',     '依約在指定時間地點完成書籍交接與付款'),
+        ('bi-check-circle-fill','green',  '賣家確認完成', '賣家按下「確認交易完成」，書籍自動下架'),
+      ] %}
+      <div class="flow-step">
+        <div class="flow-icon flow-{{ step[1] }}">
+          <i class="bi {{ step[0] }}"></i>
+        </div>
+        <div class="flow-label">{{ step[2] }}</div>
+        <div class="flow-desc">{{ step[3] }}</div>
+      </div>
+      {% if not loop.last %}<div class="flow-arrow"><i class="bi bi-arrow-right"></i></div>{% endif %}
+      {% endfor %}
+    </div>
+
+    <h5 class="mt-4 mb-2 fw-bold" style="font-size:.88rem">取消交易</h5>
+    <p style="font-size:.85rem">
+      若交易因故無法進行，<strong>賣家或買家</strong>均可在「我的訂單」或「我的上架」中取消交易。
+      取消後書籍狀態自動恢復為<span class="badge-cond badge-status-available mx-1">上架中</span>，
+      開放給其他買家搜尋。
+    </p>
+  </div>
+</section>
+
+<!-- 6. 面交注意事項 -->
+<section id="meetup" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">6</span>
+    <h2>面交注意事項</h2>
+  </div>
+  <div class="guide-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="guide-tip">
+          <div class="guide-tip-icon text-success"><i class="bi bi-geo-alt-fill"></i></div>
+          <div>
+            <strong>選擇公共場所</strong>
+            <p>建議約在圖書館、學生活動中心、各系館大廳等人多的公共場所，安全有保障。</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="guide-tip">
+          <div class="guide-tip-icon text-primary"><i class="bi bi-eye-fill"></i></div>
+          <div>
+            <strong>當場確認書況</strong>
+            <p>面交時請仔細核對書籍版本、書況是否與說明相符，交付後恕不退換。</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="guide-tip">
+          <div class="guide-tip-icon text-warning"><i class="bi bi-cash-coin"></i></div>
+          <div>
+            <strong>準備現金</strong>
+            <p>本平台以現金面交為主，請事先準備好金額，避免找零困擾。</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="guide-tip">
+          <div class="guide-tip-icon text-danger"><i class="bi bi-telephone-fill"></i></div>
+          <div>
+            <strong>保持聯繫</strong>
+            <p>若臨時有事無法赴約，請提前通知對方，並在系統上取消訂單，維護良好的交易信譽。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 常見問題 -->
+<section id="faq" class="guide-section">
+  <div class="guide-section-header">
+    <span class="guide-num">7</span>
+    <h2>常見問題</h2>
+  </div>
+  <div class="guide-body">
+    <div class="accordion" id="faqAccordion">
+      {% for q, a in [
+        ('我可以同時上架多本書嗎？', '可以。每本書籍分開上架，各自管理交易狀態，數量不受限制。'),
+        ('我下單後可以反悔嗎？', '可以。在賣家確認交易完成前，您可以在「我的訂單」中取消訂單，書籍將恢復上架。'),
+        ('書籍照片有格式限制嗎？', '支援 JPG、PNG、WEBP、GIF 格式，單次可上傳多張，每張建議不超過 5MB。'),
+        ('賣家沒有提供面交時段怎麼辦？', '您可以透過賣家的聯絡電話直接洽談，確認後請賣家在系統更新時段，或由雙方自行協議。'),
+        ('交易完成後書籍會怎麼處理？', '賣家按下「確認交易完成」後，書籍狀態更新為「已售出」並自動下架，不再顯示於搜尋結果。'),
+        ('可以修改已上架的書籍資訊嗎？', '目前請先刪除書籍後重新上架（交易中的書籍無法刪除，需先取消交易）。'),
+        ('忘記密碼怎麼辦？', '目前請聯絡平台管理員協助重設密碼。'),
+      ] %}
+      <div class="faq-item">
+        <button class="faq-btn collapsed" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#faq{{ loop.index }}">
+          <i class="bi bi-question-circle me-2 text-primary"></i>{{ q }}
+          <i class="bi bi-chevron-down faq-icon ms-auto"></i>
+        </button>
+        <div id="faq{{ loop.index }}" class="collapse">
+          <div class="faq-body">{{ a }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- 底部 CTA -->
+<div class="text-center py-4 mt-2">
+  {% if current_user %}
+  <a href="{{ url_for('index') }}" class="btn btn-primary px-4 me-2">
+    <i class="bi bi-house me-1"></i>回首頁瀏覽書籍
+  </a>
+  <a href="{{ url_for('sell_page') }}" class="btn btn-outline-primary px-4">
+    <i class="bi bi-upload me-1"></i>立即上架書籍
+  </a>
+  {% else %}
+  <a href="{{ url_for('register_page') }}" class="btn btn-primary px-4 me-2">
+    <i class="bi bi-person-plus me-1"></i>立即免費註冊
+  </a>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-primary px-4">
+    <i class="bi bi-search me-1"></i>先瀏覽書籍
+  </a>
+  {% endif %}
+</div>
+
+{% endblock %}

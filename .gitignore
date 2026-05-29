@@ -1,0 +1,28 @@
+# 環境變數（含密碼，不能上傳）
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# 本地上傳的圖片（改用 Cloudinary 後不需要）
+uploads/
+
+# 資料庫
+*.db
+*.sqlite3
+instance/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

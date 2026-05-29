@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}上架書籍 ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}class="page-wrap-narrow"{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <h1 class="section-title"><i class="bi bi-plus-circle text-primary me-2"></i>上架二手書籍</h1>
+    <p class="section-sub">填寫完整資訊有助買家快速找到您的書籍</p>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('sell') }}" enctype="multipart/form-data">
+
+  <!-- 基本資訊 -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span><i class="bi bi-info-circle me-2"></i>書籍基本資訊</span>
+    </div>
+    <div class="form-card-body">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">書名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="title"
+                 placeholder="例：計算機組織與結構" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">作者</label>
+          <input type="text" class="form-control" name="author" placeholder="作者姓名（選填）">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">ISBN</label>
+          <input type="text" class="form-control" name="isbn" placeholder="條碼（選填）">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">售價（NT$） <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="number" class="form-control" name="price" min="0" placeholder="0" required>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">書況 <span class="text-danger">*</span></label>
+          <select class="form-select" name="condition" required>
+            <option value="">請選擇書況</option>
+            {% for val, label in conditions %}
+              <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">適用系所 <span class="text-danger">*</span></label>
+          <select class="form-select" name="department" required>
+            <option value="">請選擇系所</option>
+            {% for dept in departments %}
+              <option value="{{ dept }}">{{ dept }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">書況描述 / 備註</label>
+          <textarea class="form-control" name="description" rows="3"
+                    placeholder="書況說明、是否有劃線筆記、附贈資料等…"></textarea>
+        </div>
+      </div>
+
+      <!-- 書況參考 -->
+      <div class="mt-3 p-3 rounded" style="background:#f9fafb;border:1px solid var(--border)">
+        <div class="small fw-semibold text-muted mb-2">書況參考說明</div>
+        <div class="d-flex flex-wrap gap-3">
+          {% for val, label in conditions %}
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge-cond cond-{{ val }}">{{ label }}</span>
+            <span class="small text-muted">
+              {% if val == 'new' %}未拆封全新
+              {% elif val == 'like_new' %}幾乎無使用痕跡
+              {% elif val == 'good' %}少量翻頁痕跡
+              {% elif val == 'fair' %}有筆記或摺痕
+              {% else %}可正常閱讀使用{% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 書籍照片 -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span><i class="bi bi-images me-2"></i>書籍照片</span>
+    </div>
+    <div class="form-card-body">
+      <input type="file" class="form-control" name="photos" id="photoInput"
+             accept="image/*" multiple>
+      <div class="form-text">可上傳多張圖片（JPG／PNG／WEBP），建議拍攝書封正面與書況</div>
+      <div id="photoPreview" class="d-flex flex-wrap gap-2 mt-3"></div>
+    </div>
+  </div>
+
+  <!-- 可交易時間地點 -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span><i class="bi bi-calendar-check me-2"></i>可交易時間與地點</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="addSlotBtn">
+        <i class="bi bi-plus me-1"></i>新增時段
+      </button>
+    </div>
+    <div class="form-card-body">
+      <p class="text-muted small mb-3">提供可面交的日期、時間與地點，買家從中選擇後下單</p>
+      <div id="slotsContainer">
+        <div class="slot-row">
+          <div>
+            <label class="form-label">日期</label>
+            <input type="date" class="form-control form-control-sm" name="slot_date">
+          </div>
+          <div>
+            <label class="form-label">時間</label>
+            <input type="time" class="form-control form-control-sm" name="slot_time">
+          </div>
+          <div>
+            <label class="form-label">地點</label>
+            <input type="text" class="form-control form-control-sm" name="slot_location"
+                   placeholder="例：圖書館一樓大廳">
+          </div>
+          <div class="d-flex align-items-end pb-1">
+            <button type="button"
+                    class="btn btn-sm btn-outline-danger remove-slot"
+                    style="visibility:hidden">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end pt-2">
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary px-4">取消</a>
+    <button type="submit" class="btn btn-primary px-5 fw-semibold">
+      <i class="bi bi-upload me-1"></i>上架書籍
+    </button>
+  </div>
+
+</form>
+
+{% block scripts %}
+<script>
+document.getElementById('addSlotBtn').addEventListener('click', function(){
+  const container = document.getElementById('slotsContainer');
+  const clone = container.querySelector('.slot-row').cloneNode(true);
+  clone.querySelectorAll('input').forEach(i => i.value = '');
+  const removeBtn = clone.querySelector('.remove-slot');
+  removeBtn.style.visibility = 'visible';
+  removeBtn.addEventListener('click', () => clone.remove());
+  container.appendChild(clone);
+});
+
+document.getElementById('photoInput').addEventListener('change', function(){
+  const preview = document.getElementById('photoPreview');
+  preview.innerHTML = '';
+  Array.from(this.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'photo-preview-thumb';
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

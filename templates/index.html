@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% block title %}首頁 ─ 暨大二手書平台{% endblock %}
+
+{# 首頁搜尋欄不顯示 navbar 內的搜尋（已整合在 hero） #}
+{% block nav_search %}{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="hero-compact">
+  <div>
+    <h1><i class="bi bi-book-half me-2" style="opacity:.7"></i>暨大二手教科書平台</h1>
+    <p>二手書交流</p>
+    <form method="GET" action="{{ url_for('index') }}" class="mt-3 d-flex gap-2" style="max-width:520px">
+      {% if selected_dept %}<input type="hidden" name="department" value="{{ selected_dept }}">{% endif %}
+      {% if selected_cond %}<input type="hidden" name="condition" value="{{ selected_cond }}">{% endif %}
+      <input type="text" class="form-control" name="q"
+             placeholder="搜尋書名、作者、ISBN…" value="{{ q }}"
+             style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff">
+      <button class="btn btn-warning fw-bold px-4 flex-shrink-0" type="submit">
+        <i class="bi bi-search me-1"></i>搜尋
+      </button>
+      {% if q or selected_dept or selected_cond %}
+      <a href="{{ url_for('index') }}" class="btn btn-outline-light flex-shrink-0">清除</a>
+      {% endif %}
+    </form>
+  </div>
+  <div class="hero-stat d-none d-xl-flex">
+    <div class="hero-stat-item">
+      <strong>{{ books|length }}</strong>
+      <span>本書籍</span>
+    </div>
+    <div class="hero-stat-item">
+      <strong>{{ departments|length }}</strong>
+      <span>個系所</span>
+    </div>
+  </div>
+</div>
+
+<!-- Index Layout -->
+<div class="index-layout">
+
+  <!-- Sidebar: filters -->
+  <aside class="filter-sidebar">
+
+    <div class="sidebar-card" style="padding:.7rem .75rem">
+      <div class="sidebar-title"><i class="bi bi-building me-1"></i>依系所瀏覽</div>
+
+      <!-- 全部 -->
+      <a href="{{ url_for('index') }}{% if q %}?q={{ q }}{% endif %}{% if selected_cond %}&condition={{ selected_cond }}{% endif %}"
+         class="dept-all-link {% if not selected_dept %}active{% endif %}">
+        <i class="bi bi-grid me-1"></i>全部系所
+      </a>
+
+      <!-- 學院手風琴 -->
+      <div class="dept-accordion" id="deptAccordion">
+        {% for college, depts in dept_groups %}
+        {% set college_id = loop.index %}
+        {% set is_open = selected_dept in depts %}
+        <div class="dept-group">
+          <button class="dept-group-btn {% if not is_open %}collapsed{% endif %}"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#college{{ college_id }}"
+                  aria-expanded="{{ 'true' if is_open else 'false' }}">
+            <span>{{ college }}</span>
+            <i class="bi bi-chevron-down toggle-icon"></i>
+          </button>
+          <div id="college{{ college_id }}"
+               class="dept-group-body collapse {% if is_open %}show{% endif %}">
+            {% for dept in depts %}
+            <a href="?{% if q %}q={{ q }}&{% endif %}department={{ dept }}{% if selected_cond %}&condition={{ selected_cond }}{% endif %}"
+               class="dept-item {% if dept == selected_dept %}active{% endif %}">
+              {{ dept }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <div class="sidebar-title"><i class="bi bi-star me-1"></i>依書況篩選</div>
+      <div class="cond-pill-list">
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_dept %}department={{ selected_dept }}&{% endif %}"
+           class="cond-pill {% if not selected_cond %}active{% endif %}">
+          <span class="cond-dot" style="background:#d1d5db"></span>所有書況
+        </a>
+        {% set dot_colors = {'new':'#16a34a','like_new':'#0284c7','good':'#7c3aed','fair':'#d97706','acceptable':'#6b7280'} %}
+        {% for val, label in conditions %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_dept %}department={{ selected_dept }}&{% endif %}condition={{ val }}"
+           class="cond-pill {% if val == selected_cond %}active{% endif %}">
+          <span class="cond-dot" style="background:{{ dot_colors[val] }}"></span>
+          {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if current_user %}
+    <div class="sidebar-card" style="border-color:var(--green-border);background:var(--green-soft)">
+      <div class="sidebar-title" style="color:var(--green-dark)">我的書架</div>
+      <div class="d-flex flex-column gap-2">
+        <a href="{{ url_for('my_listings') }}"
+           class="btn btn-sm btn-outline-success w-100 text-start">
+          <i class="bi bi-list-ul me-1"></i>我的上架
+        </a>
+        <a href="{{ url_for('my_orders') }}"
+           class="btn btn-sm btn-outline-success w-100 text-start">
+          <i class="bi bi-bag-check me-1"></i>我的訂單
+        </a>
+        <a href="{{ url_for('sell_page') }}"
+           class="btn btn-sm btn-success w-100">
+          <i class="bi bi-plus-lg me-1"></i>上架書籍
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </aside>
+
+  <!-- Content: book grid -->
+  <div class="content-area">
+    <div class="content-toolbar">
+      <span class="result-info">
+        {% if q or selected_dept or selected_cond %}
+          篩選結果：<strong>{{ books|length }}</strong> 本書籍
+          {% if q %} ── 關鍵字「{{ q }}」{% endif %}
+          {% if selected_dept %} ── {{ selected_dept }}{% endif %}
+          {% if selected_cond %} ── 書況：{{ conditions | selectattr('0','eq',selected_cond) | map(attribute='1') | first }}{% endif %}
+        {% else %}
+          共 <strong>{{ books|length }}</strong> 本書籍上架中
+        {% endif %}
+      </span>
+    </div>
+
+    {% if books %}
+    <div class="books-grid">
+      {% for book in books %}
+      <a href="{{ url_for('book_detail', book_id=book.id) }}" class="book-card">
+        {% if book.first_photo %}
+          <img src="{{ book.first_photo }}"
+               class="book-thumb" alt="{{ book.title }}">
+        {% else %}
+          <div class="book-thumb-placeholder">
+            <i class="bi bi-book"></i>
+          </div>
+        {% endif %}
+        <div class="book-card-body">
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.author or '（未填作者）' }}</div>
+          <span class="badge-dept d-inline-block mb-2">{{ book.department }}</span>
+          <div class="book-meta">
+            <span class="book-price">NT${{ book.price }}</span>
+            <span class="badge-cond cond-{{ book.condition }}">{{ book.condition_label }}</span>
+          </div>
+        </div>
+        <div class="book-card-footer">
+          <span><i class="bi bi-person me-1"></i>{{ book.seller.name }}</span>
+          <span>{{ book.created_at.strftime('%m/%d') }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-inbox"></i>
+      <p>目前沒有符合條件的書籍</p>
+      {% if current_user %}
+        <a href="{{ url_for('sell_page') }}" class="btn btn-primary">上架第一本書</a>
+      {% else %}
+        <a href="{{ url_for('register_page') }}" class="btn btn-primary">註冊後上架書籍</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

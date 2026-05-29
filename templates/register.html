@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}註冊 ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}{% endblock %}
+{% block content %}
+<div class="auth-card" style="max-width:480px">
+  <div class="auth-icon"><i class="bi bi-person-plus"></i></div>
+  <h2>建立帳號</h2>
+  <p class="auth-sub">限暨南國際大學在學學生使用</p>
+
+  <form method="POST" action="{{ url_for('register') }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">學號 <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+          <input type="text" class="form-control" name="student_id"
+                 placeholder="例：s112213001" required autofocus>
+        </div>
+        <div class="form-text">學號即為登入帳號，請確認正確</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">姓名 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" name="name" placeholder="真實姓名" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">聯絡電話</label>
+        <input type="tel" class="form-control" name="phone" placeholder="供買家聯絡（選填）">
+      </div>
+      <div class="col-12">
+        <label class="form-label">所屬系所 <span class="text-danger">*</span></label>
+        <select class="form-select" name="department" required>
+          <option value="">請選擇系所</option>
+          {% for dept in departments %}
+            <option value="{{ dept }}">{{ dept }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label">密碼 <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" class="form-control" name="password"
+                 id="pwd" placeholder="至少 6 個字元" minlength="6" required>
+          <button class="btn btn-outline-secondary" type="button" id="togglePwd">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-12">
+        <label class="form-label">確認密碼 <span class="text-danger">*</span></label>
+        <input type="password" class="form-control" name="password2"
+               id="pwd2" placeholder="再次輸入密碼" required>
+        <div class="form-text text-danger d-none" id="pwdMismatch">兩次密碼不一致</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 fw-semibold py-2 mt-4">
+      <i class="bi bi-check-circle me-1"></i>建立帳號
+    </button>
+  </form>
+
+  <hr class="my-4">
+  <p class="text-center text-muted small mb-0">
+    已有帳號？<a href="{{ url_for('login_page') }}" class="fw-semibold">立即登入</a>
+  </p>
+</div>
+
+{% block scripts %}
+<script>
+document.getElementById('togglePwd').addEventListener('click', function(){
+  const inp = document.getElementById('pwd');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  this.querySelector('i').className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+});
+document.querySelector('form').addEventListener('submit', function(e){
+  const msg = document.getElementById('pwdMismatch');
+  if (document.getElementById('pwd').value !== document.getElementById('pwd2').value) {
+    e.preventDefault(); msg.classList.remove('d-none');
+  } else { msg.classList.add('d-none'); }
+});
+</script>
+{% endblock %}
+{% endblock %}

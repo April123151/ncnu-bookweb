@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}{{ book.title }} ─ 暨大二手書平台{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+  <a href="{{ url_for('index') }}" class="text-decoration-none text-muted small">
+    <i class="bi bi-arrow-left me-1"></i>回到書籍列表
+  </a>
+</div>
+
+<div class="detail-wrap">
+
+  <!-- Left: Photos -->
+  <div>
+    {% if book.photos %}
+      <div id="photoCarousel" class="carousel slide rounded overflow-hidden border"
+           data-bs-ride="false" style="background:#f9fafb">
+        <div class="carousel-inner">
+          {% for photo in book.photos %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <img src="{{ photo.filename }}"
+                 class="detail-photo d-block mx-auto" alt="{{ book.title }}">
+          </div>
+          {% endfor %}
+        </div>
+        {% if book.photos|length > 1 %}
+        <button class="carousel-control-prev" type="button"
+                data-bs-target="#photoCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button"
+                data-bs-target="#photoCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon"></span>
+        </button>
+        {% endif %}
+      </div>
+      {% if book.photos|length > 1 %}
+      <div class="d-flex gap-2 mt-2 flex-wrap">
+        {% for photo in book.photos %}
+        <img src="{{ url_for('uploaded_file', filename=photo.filename) }}"
+             class="thumb-mini" alt=""
+             data-bs-target="#photoCarousel" data-bs-slide-to="{{ loop.index0 }}">
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% else %}
+    <div class="detail-photo-ph">
+      <i class="bi bi-book text-muted" style="font-size:5rem;opacity:.3"></i>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Info -->
+  <div>
+    <!-- Status & condition -->
+    <div class="d-flex gap-2 align-items-center mb-3">
+      <span class="badge-cond badge-status-{{ book.status }} px-3 py-2 rounded-pill fw-semibold fs-6">
+        {% if book.status == 'available' %}<i class="bi bi-check-circle me-1"></i>上架中
+        {% elif book.status == 'locked' %}<i class="bi bi-lock me-1"></i>交易中
+        {% else %}<i class="bi bi-archive me-1"></i>已售出{% endif %}
+      </span>
+      <span class="badge-cond cond-{{ book.condition }} px-3 py-2 rounded-pill fw-semibold fs-6">
+        {{ book.condition_label }}
+      </span>
+    </div>
+
+    <h1 class="fw-bold mb-1" style="font-size:1.65rem;letter-spacing:-.02em">{{ book.title }}</h1>
+    {% if book.author %}
+    <p class="text-muted mb-1"><i class="bi bi-person-lines-fill me-1"></i>{{ book.author }}</p>
+    {% endif %}
+    {% if book.isbn %}
+    <p class="text-muted small mb-0"><i class="bi bi-upc me-1"></i>ISBN：{{ book.isbn }}</p>
+    {% endif %}
+
+    <div class="d-flex align-items-baseline gap-3 my-3">
+      <span class="detail-price">NT${{ book.price }}</span>
+      <span class="badge-dept">{{ book.department }}</span>
+    </div>
+
+    {% if book.description %}
+    <div class="p-3 rounded mb-3" style="background:#f9fafb;border:1px solid var(--border)">
+      <div class="small fw-semibold text-muted mb-1">賣家說明</div>
+      <p class="mb-0 small" style="white-space:pre-wrap">{{ book.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Seller -->
+    <div class="seller-box">
+      <div class="avatar avatar-lg">{{ book.seller.name[0] }}</div>
+      <div class="flex-grow-1">
+        <div class="fw-bold">{{ book.seller.name }}</div>
+        <div class="text-muted small">{{ book.seller.department }}</div>
+        {% if book.seller.phone %}
+        <div class="text-muted small"><i class="bi bi-telephone me-1"></i>{{ book.seller.phone }}</div>
+        {% endif %}
+      </div>
+      <div class="text-muted small">{{ book.created_at.strftime('%Y/%m/%d') }}</div>
+    </div>
+
+    <!-- ── Order / Seller actions ── -->
+    {% if current_user and current_user.id != book.seller_id %}
+
+      {% if book.status == 'available' %}
+      <div class="order-box">
+        <div class="order-box-header">
+          <i class="bi bi-calendar-check me-2"></i>選擇面交時間地點
+        </div>
+        <div class="order-box-body">
+          {% if book.timeslots %}
+          <form method="POST" action="{{ url_for('place_order', book_id=book.id) }}">
+            {% for slot in book.timeslots %}
+            <label class="timeslot-option">
+              <input type="radio" name="timeslot_id" value="{{ slot.id }}" required>
+              <div>
+                <div class="fw-semibold small">
+                  <i class="bi bi-calendar3 me-1 text-muted"></i>{{ slot.date }}
+                  <span class="ms-2"><i class="bi bi-clock me-1 text-muted"></i>{{ slot.time_str }}</span>
+                </div>
+                <div class="text-muted small mt-1">
+                  <i class="bi bi-geo-alt me-1"></i>{{ slot.location }}
+                </div>
+              </div>
+            </label>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-2">
+              <i class="bi bi-cart-plus me-2"></i>我要下單
+            </button>
+            <p class="text-muted small text-center mt-2 mb-0">
+              <i class="bi bi-info-circle me-1"></i>下單後書籍鎖定，請依約出席面交
+            </p>
+          </form>
+          {% else %}
+          <p class="text-muted text-center py-3 mb-0">賣家尚未提供面交時段，請透過電話聯絡</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {% elif book.status == 'locked' %}
+      <div class="alert alert-warning d-flex gap-2 align-items-center">
+        <i class="bi bi-lock-fill fs-5"></i>
+        <div><strong>交易進行中</strong>，此書籍暫時無法下單</div>
+      </div>
+
+      {% else %}
+      <div class="alert alert-secondary d-flex gap-2 align-items-center">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>此書籍已售出</div>
+      </div>
+      {% endif %}
+
+    {% elif current_user and current_user.id == book.seller_id %}
+
+      <div class="p-3 rounded" style="background:#f0fdf4;border:1px solid var(--green-border)">
+        <p class="fw-semibold mb-2 small" style="color:var(--green-dark)">
+          <i class="bi bi-person-check me-1"></i>這是您上架的書籍
+        </p>
+        {% if active_order %}
+        <div class="p-3 rounded mb-3" style="background:#fefce8;border:1px solid #fde68a;font-size:.88rem">
+          <div class="fw-bold mb-1">交易進行中</div>
+          <div>買家：<strong>{{ active_order.buyer.name }}</strong>（{{ active_order.buyer.student_id }}）</div>
+          {% if active_order.buyer.phone %}<div>電話：{{ active_order.buyer.phone }}</div>{% endif %}
+          <div>時間：{{ active_order.timeslot.display if active_order.timeslot else '未選擇' }}</div>
+          <div class="text-muted">下單：{{ active_order.created_at.strftime('%Y/%m/%d %H:%M') }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <form method="POST" action="{{ url_for('complete_order', order_id=active_order.id) }}">
+            <button type="submit" class="btn btn-success fw-bold"
+                    onclick="return confirm('確認交易完成？書籍將下架。')">
+              <i class="bi bi-check-lg me-1"></i>交易完成
+            </button>
+          </form>
+          <form method="POST" action="{{ url_for('cancel_order', order_id=active_order.id) }}">
+            <button type="submit" class="btn btn-outline-danger"
+                    onclick="return confirm('確認取消交易？書籍將恢復上架。')">
+              <i class="bi bi-x-lg me-1"></i>取消交易
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('my_listings') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-list-ul me-1"></i>管理上架
+          </a>
+          <form method="POST" action="{{ url_for('delete_book', book_id=book.id) }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('確定要刪除此書籍嗎？')">
+              <i class="bi bi-trash me-1"></i>刪除書籍
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+    {% else %}
+      <div class="order-box">
+        <div class="order-box-body text-center py-3">
+          <p class="mb-3 text-muted">登入後才能下單購買</p>
+          <a href="{{ url_for('login_page') }}" class="btn btn-primary me-2">登入</a>
+          <a href="{{ url_for('register_page') }}" class="btn btn-outline-primary">註冊</a>
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
