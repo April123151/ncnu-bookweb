@@ -98,9 +98,25 @@
     <!-- Status & action -->
     <div class="text-center">
       {% if order.status == 'pending' %}
-        <span class="badge-cond badge-status-locked d-block px-2 py-2 rounded-pill fw-semibold mb-2">
-          交易中
+        <span class="badge-cond badge-status-locked d-block px-2 py-2 rounded-pill fw-semibold mb-3">
+          <i class="bi bi-clock me-1"></i>交易進行中
         </span>
+        <!-- 步驟引導 -->
+        <div class="text-start mb-3 p-2 rounded" style="background:#f0fdf4;border:1px solid var(--green-border);font-size:.78rem">
+          <div class="fw-semibold mb-1" style="color:var(--green-dark)">接下來的步驟</div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge rounded-pill bg-primary" style="font-size:.65rem;min-width:18px">1</span>
+            <span>透過聊天室或電話聯絡賣家</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge rounded-pill bg-primary" style="font-size:.65rem;min-width:18px">2</span>
+            <span>依約定時間地點完成面交</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge rounded-pill bg-secondary" style="font-size:.65rem;min-width:18px">3</span>
+            <span class="text-muted">等待賣家確認完成</span>
+          </div>
+        </div>
         <a href="{{ url_for('chat_page', order_id=order.id) }}"
            class="btn btn-primary btn-sm w-100 fw-semibold mb-1">
           <i class="bi bi-chat-fill me-1"></i>聊天室

@@ -18,6 +18,14 @@
 {% set avail  = books | selectattr('status','eq','available') | list %}
 {% set locked = books | selectattr('status','eq','locked')    | list %}
 {% set sold   = books | selectattr('status','eq','sold')      | list %}
+
+{% if locked %}
+<div class="alert d-flex align-items-center gap-3 mb-3 fw-semibold"
+     style="background:#fffbeb;border:1.5px solid #f59e0b;color:#92400e;border-radius:10px">
+  <i class="bi bi-bell-fill fs-5 flex-shrink-0" style="color:#f59e0b"></i>
+  <span>您有 <strong>{{ locked|length }}</strong> 筆交易進行中！請確認面交時間，完成後點選「完成」以下架書籍。</span>
+</div>
+{% endif %}
 <div class="stat-row">
   <div class="stat-card stat-available">
     <div class="num">{{ avail|length }}</div>
@@ -54,7 +62,7 @@
       </thead>
       <tbody>
         {% for book in books %}
-        <tr>
+        <tr {% if book.status == 'locked' %}class="order-alert-row"{% endif %}>
           <td>
             <div class="d-flex align-items-center gap-3">
               {% if book.first_photo %}

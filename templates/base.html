@@ -46,8 +46,11 @@
           </a>
         </li>
         <li>
-          <a href="{{ url_for('my_listings') }}">
+          <a href="{{ url_for('my_listings') }}" style="position:relative">
             <i class="bi bi-list-ul"></i>我的上架
+            {% if seller_pending > 0 %}
+            <span class="nav-notify-badge">{{ seller_pending }}</span>
+            {% endif %}
           </a>
         </li>
         <li>

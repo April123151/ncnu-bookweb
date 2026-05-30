@@ -173,6 +173,14 @@ def get_session_user(request: Request, db: Session) -> Optional[models.User]:
 def render(tpl: str, request: Request, db: Session, ctx: dict = {}):
     flashes = request.session.pop("_flashes", [])
     user = get_session_user(request, db)
+    seller_pending = 0
+    if user:
+        seller_pending = (
+            db.query(models.Order)
+            .join(models.Book, models.Order.book_id == models.Book.id)
+            .filter(models.Book.seller_id == user.id, models.Order.status == "pending")
+            .count()
+        )
     return templates.TemplateResponse(tpl, {
         "request":           request,
         "flashed_messages":  flashes,
@@ -180,6 +188,7 @@ def render(tpl: str, request: Request, db: Session, ctx: dict = {}):
         "departments":       DEPARTMENTS,
         "dept_groups":       DEPARTMENT_GROUPS,
         "conditions":        CONDITIONS,
+        "seller_pending":    seller_pending,
         **ctx,
     })
 
