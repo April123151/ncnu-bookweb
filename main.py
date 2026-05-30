@@ -164,15 +164,52 @@ async def save_upload(upload: UploadFile) -> Optional[str]:
     """Upload to Cloudinary; returns secure URL or None."""
     if not upload or not upload.filename or not allowed_file(upload.filename):
         return None
-    data = await upload.read()   # proper async read; always starts at byte 0
+    data = await upload.read()
     if not data:
+        print("[WARN] save_upload: read() returned empty bytes")
         return None
+    print(f"[INFO] uploading {upload.filename} ({len(data)} bytes) to Cloudinary")
     result = cloudinary.uploader.upload(
         data,
         folder="bookweb",
-        resource_type="image",
+        resource_type="auto",
     )
-    return result["secure_url"]
+    url = result.get("secure_url")
+    print(f"[INFO] Cloudinary upload OK: {url}")
+    return url
+
+
+# ── Debug ─────────────────────────────────────────────────────────────────────
+
+from fastapi.responses import JSONResponse
+
+@app.get("/debug/cloudinary")
+async def debug_cloudinary():
+    """Check Cloudinary env vars and attempt a tiny test upload."""
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    api_key    = os.getenv("CLOUDINARY_API_KEY", "")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET", "")
+    info = {
+        "CLOUDINARY_CLOUD_NAME": cloud_name or "(not set)",
+        "CLOUDINARY_API_KEY":    api_key[:6] + "..." if api_key else "(not set)",
+        "CLOUDINARY_API_SECRET": "(set)" if api_secret else "(not set)",
+    }
+    if not (cloud_name and api_key and api_secret):
+        return JSONResponse({"status": "MISSING_ENV", "vars": info})
+    # Try uploading a tiny 1×1 transparent PNG
+    import base64, io
+    tiny_png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+        "YGD4DwABBAEAWjR/rQAAAABJRU5ErkJggg=="
+    )
+    try:
+        result = cloudinary.uploader.upload(
+            tiny_png, folder="bookweb_debug", resource_type="image",
+            public_id="__debug_test__", overwrite=True
+        )
+        return JSONResponse({"status": "OK", "vars": info, "url": result.get("secure_url")})
+    except Exception as e:
+        return JSONResponse({"status": "UPLOAD_ERROR", "vars": info, "error": str(e)})
 
 
 # ── Index / Search ────────────────────────────────────────────────────────────
@@ -342,13 +379,15 @@ async def sell(
     db.flush()
 
     upload_errors = 0
+    last_upload_err = ""
     for upload in photos:
         try:
             fname = await save_upload(upload)
             if fname:
                 db.add(models.BookPhoto(book_id=book.id, filename=fname))
         except Exception as _ue:
-            print(f"[WARN] photo upload failed: {_ue}")
+            last_upload_err = str(_ue)
+            print(f"[WARN] photo upload failed: {_ue}", flush=True)
             upload_errors += 1
 
     for d, t, l in zip(slot_date, slot_time, slot_location):
@@ -358,7 +397,8 @@ async def sell(
     db.commit()
 
     if upload_errors:
-        flash(request, f"書籍上架成功，但有 {upload_errors} 張圖片上傳失敗（請確認圖片大小與格式）", "warning")
+        err_hint = f"錯誤：{last_upload_err[:120]}" if last_upload_err else "請確認圖片大小與格式"
+        flash(request, f"書籍上架成功，但有 {upload_errors} 張圖片上傳失敗。{err_hint}", "warning")
     else:
         flash(request, "書籍上架成功！", "success")
     return redirect("book_detail", book_id=book.id)
