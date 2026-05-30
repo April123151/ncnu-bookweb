@@ -1,5 +1,6 @@
 /**
- * WeekPicker — 7-day × hourly grid for selecting face-to-face meeting times.
+ * WeekPicker — dropdown-based slot picker for face-to-face meeting times.
+ * Each row: date <select> (next 7 days) + time <select> (hourly) + location <input>.
  *
  * Usage:
  *   const wp = new WeekPicker(mountEl, { existingSlots, defaultLocation });
@@ -14,199 +15,161 @@ class WeekPicker {
   constructor(mountEl, { existingSlots = [], defaultLocation = '' } = {}) {
     this.mountEl = mountEl;
     this.defaultLocation = defaultLocation;
-
-    // Pre-select existing slots, but only those within the current 7-day window
-    const validDates = new Set(this._days().map(d => this._fmtDate(d)));
-    this.selected = new Set(
-      existingSlots
-        .map(s => `${this._normDate(s.date)}|${s.time}`)
-        .filter(key => validDates.has(key.split('|')[0]))
-    );
-
-    this._dragging  = false;
-    this._dragMode  = null; // 'select' | 'deselect'
+    this.initSlots = existingSlots.length > 0 ? existingSlots : [];
+    this._dateOpts = this._buildDateOpts();
+    this._timeOpts = this._buildTimeOpts();
     this.render();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  _normDate(s) {
-    return String(s).replace(/-/g, '/');
-  }
-
   _days() {
-    const list = [];
+    const days = [];
     const base = new Date();
     base.setHours(0, 0, 0, 0);
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      list.push(d);
+      days.push(d);
     }
-    return list;
+    return days;
   }
 
   _fmtDate(d) {
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  _dayLabel(d) {
-    const dow = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
-    const isToday = this._isToday(d);
-    return `(${dow})<br>${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}${isToday ? '<br><span class="wp-today-tag">今天</span>' : ''}`;
+  _normDate(s) {
+    return String(s).replace(/-/g, '/');
   }
 
-  _isToday(d) {
-    const t = new Date();
-    return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+  _buildDateOpts() {
+    const DOW = ['日', '一', '二', '三', '四', '五', '六'];
+    const today = new Date();
+    return this._days().map(d => {
+      const val  = this._fmtDate(d);
+      const dow  = DOW[d.getDay()];
+      const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth();
+      const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} (${dow})${isToday ? ' 今天' : ''}`;
+      return `<option value="${val}">${label}</option>`;
+    }).join('');
   }
 
-  _isPast(d, h) {
-    const now = new Date();
-    const hour = parseInt(h, 10);
-    const cellEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour + 1, 0);
-    return cellEnd <= now;
-  }
-
-  _hours() {
-    const list = [];
-    for (let h = 8; h <= 21; h++) list.push(`${String(h).padStart(2, '0')}:00`);
-    return list;
+  _buildTimeOpts() {
+    const opts = [];
+    for (let h = 8; h <= 21; h++) {
+      const val = `${String(h).padStart(2, '0')}:00`;
+      opts.push(`<option value="${val}">${val}</option>`);
+    }
+    return opts.join('');
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   render() {
-    const days  = this._days();
-    const hours = this._hours();
-
-    const headCells = days
-      .map(d => `<th class="wp-day-col${this._isToday(d) ? ' wp-today-col' : ''}">${this._dayLabel(d)}</th>`)
-      .join('');
-
-    const bodyRows = hours.map(h => {
-      const cells = days.map(d => {
-        const key  = `${this._fmtDate(d)}|${h}`;
-        const past = this._isPast(d, h);
-        const sel  = this.selected.has(key);
-        return `<td class="wp-slot${sel ? ' wp-selected' : ''}${past ? ' wp-past' : ''}"
-                    data-date="${this._fmtDate(d)}" data-time="${h}"${past ? ' data-past="1"' : ''}></td>`;
-      }).join('');
-      return `<tr><td class="wp-time-lbl">${h}</td>${cells}</tr>`;
-    }).join('');
-
     this.mountEl.innerHTML = `
-      <div class="wp-hint small text-muted mb-2">
-        <i class="bi bi-hand-index me-1"></i>點擊或拖曳選取可面交的時段（選取後填寫地點）
-      </div>
-      <div class="wp-scroll">
-        <table class="wp-table" id="wpTable" draggable="false">
-          <thead><tr>
-            <th class="wp-time-lbl wp-head-empty"></th>
-            ${headCells}
-          </tr></thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-      </div>
-      <div class="mt-3">
-        <label class="form-label fw-semibold">
-          <i class="bi bi-geo-alt me-1 text-muted"></i>面交地點
-          <span class="text-danger">*</span>
-        </label>
-        <input type="text" class="form-control" id="wpLocation"
-               placeholder="例：圖書館一樓大廳、資工系館 101"
-               value="${this.defaultLocation.replace(/"/g, '&quot;')}">
-        <div class="form-text">所有選取時段使用相同地點</div>
-      </div>
-      <div class="mt-2 small" id="wpSummary"></div>
+      <p class="text-muted small mb-3">
+        <i class="bi bi-info-circle me-1"></i>可新增多個時段，買家選擇後下單
+      </p>
+      <div id="wpSlotRows"></div>
+      <button type="button" class="btn btn-outline-primary btn-sm mt-1" id="wpAddBtn">
+        <i class="bi bi-plus me-1"></i>新增時段
+      </button>
     `;
 
-    this._bindEvents();
-    this._updateSummary();
-  }
+    const rowsEl = this.mountEl.querySelector('#wpSlotRows');
+    const init = this.initSlots.length > 0
+      ? this.initSlots
+      : [{ date: '', time: '', location: this.defaultLocation }];
 
-  // ── Events ────────────────────────────────────────────────────────────────
+    init.forEach(s => rowsEl.appendChild(this._makeRow(s)));
 
-  _bindEvents() {
-    const table = this.mountEl.querySelector('#wpTable');
-
-    // Mouse
-    table.addEventListener('mousedown', e => {
-      const cell = e.target.closest('.wp-slot');
-      if (!cell || cell.dataset.past) return;
-      e.preventDefault();
-      this._dragging = true;
-      const key = `${cell.dataset.date}|${cell.dataset.time}`;
-      this._dragMode = this.selected.has(key) ? 'deselect' : 'select';
-      this._applyCell(cell, key);
+    this.mountEl.querySelector('#wpAddBtn').addEventListener('click', () => {
+      rowsEl.appendChild(this._makeRow({ date: '', time: '', location: this.defaultLocation }));
+      this._syncDelBtns();
     });
 
-    table.addEventListener('mouseover', e => {
-      if (!this._dragging) return;
-      const cell = e.target.closest('.wp-slot');
-      if (!cell || cell.dataset.past) return;
-      const key = `${cell.dataset.date}|${cell.dataset.time}`;
-      if (this._dragMode === 'select'   && !this.selected.has(key)) this._applyCell(cell, key);
-      if (this._dragMode === 'deselect' &&  this.selected.has(key)) this._applyCell(cell, key);
-    });
-
-    document.addEventListener('mouseup', () => { this._dragging = false; });
-
-    // Touch
-    table.addEventListener('touchstart', e => {
-      const t = e.touches[0];
-      const cell = document.elementFromPoint(t.clientX, t.clientY)?.closest('.wp-slot');
-      if (!cell || cell.dataset.past) return;
-      this._dragging = true;
-      const key = `${cell.dataset.date}|${cell.dataset.time}`;
-      this._dragMode = this.selected.has(key) ? 'deselect' : 'select';
-      this._applyCell(cell, key);
-    }, { passive: true });
-
-    table.addEventListener('touchmove', e => {
-      if (!this._dragging) return;
-      const t = e.touches[0];
-      const cell = document.elementFromPoint(t.clientX, t.clientY)?.closest('.wp-slot');
-      if (!cell || cell.dataset.past) return;
-      const key = `${cell.dataset.date}|${cell.dataset.time}`;
-      if (this._dragMode === 'select'   && !this.selected.has(key)) this._applyCell(cell, key);
-      if (this._dragMode === 'deselect' &&  this.selected.has(key)) this._applyCell(cell, key);
-    }, { passive: true });
-
-    document.addEventListener('touchend', () => { this._dragging = false; });
+    this._syncDelBtns();
   }
 
-  _applyCell(cell, key) {
-    if (this._dragMode === 'select') {
-      this.selected.add(key);
-      cell.classList.add('wp-selected');
-    } else {
-      this.selected.delete(key);
-      cell.classList.remove('wp-selected');
+  // ── Row ───────────────────────────────────────────────────────────────────
+
+  _makeRow(slot) {
+    const dateVal = slot.date ? this._normDate(slot.date) : '';
+    const timeVal = slot.time || slot.time_str || '';
+    const locVal  = (slot.location || '').replace(/"/g, '&quot;');
+
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    row.innerHTML = `
+      <div>
+        <label class="form-label">日期</label>
+        <select class="form-select form-select-sm wp-date">
+          <option value="">選擇日期</option>
+          ${this._dateOpts}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">時間</label>
+        <select class="form-select form-select-sm wp-time">
+          <option value="">選擇時間</option>
+          ${this._timeOpts}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">地點</label>
+        <input type="text" class="form-control form-control-sm wp-location"
+               placeholder="例：圖書館一樓大廳" value="${locVal}">
+      </div>
+      <div class="d-flex align-items-end pb-1">
+        <button type="button" class="btn btn-sm btn-outline-danger wp-del">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    `;
+
+    // Pre-select date
+    if (dateVal) {
+      for (const opt of row.querySelector('.wp-date').options) {
+        if (opt.value === dateVal) { opt.selected = true; break; }
+      }
     }
-    this._updateSummary();
+    // Pre-select time
+    if (timeVal) {
+      for (const opt of row.querySelector('.wp-time').options) {
+        if (opt.value === timeVal) { opt.selected = true; break; }
+      }
+    }
+
+    row.querySelector('.wp-del').addEventListener('click', () => {
+      row.remove();
+      this._syncDelBtns();
+    });
+
+    return row;
   }
 
-  _updateSummary() {
-    const el = this.mountEl.querySelector('#wpSummary');
-    if (!el) return;
-    const n = this.selected.size;
-    el.innerHTML = n === 0
-      ? '<span class="text-muted"><i class="bi bi-calendar-x me-1"></i>尚未選取任何時段</span>'
-      : `<span class="text-success"><i class="bi bi-check-circle me-1"></i>已選取 <strong>${n}</strong> 個時段</span>`;
+  _syncDelBtns() {
+    const rows = this.mountEl.querySelectorAll('.slot-row');
+    rows.forEach(row => {
+      row.querySelector('.wp-del').style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+    });
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  validate() {
-    if (this.selected.size === 0) {
-      alert('請至少選取一個可交易時段！');
-      return false;
+  hasValidSlots() {
+    for (const row of this.mountEl.querySelectorAll('.slot-row')) {
+      if (row.querySelector('.wp-date').value &&
+          row.querySelector('.wp-time').value &&
+          row.querySelector('.wp-location').value.trim()) return true;
     }
-    const loc = this.mountEl.querySelector('#wpLocation')?.value.trim();
-    if (!loc) {
-      this.mountEl.querySelector('#wpLocation')?.focus();
-      alert('請填寫面交地點！');
+    return false;
+  }
+
+  validate() {
+    if (!this.hasValidSlots()) {
+      alert('請至少新增一個完整的面交時段（日期、時間、地點）！');
       return false;
     }
     return true;
@@ -214,17 +177,20 @@ class WeekPicker {
 
   injectHiddenInputs(form) {
     form.querySelectorAll('input[data-wp]').forEach(el => el.remove());
-    const loc = this.mountEl.querySelector('#wpLocation')?.value.trim() || '';
-    const add = (name, value) => {
+    const add = (name, val) => {
       const inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = name; inp.value = value; inp.dataset.wp = '1';
+      inp.type = 'hidden'; inp.name = name; inp.value = val; inp.dataset.wp = '1';
       form.appendChild(inp);
     };
-    for (const key of this.selected) {
-      const [date, time] = key.split('|');
-      add('slot_date', date);
-      add('slot_time', time);
-      add('slot_location', loc);
+    for (const row of this.mountEl.querySelectorAll('.slot-row')) {
+      const date = row.querySelector('.wp-date').value;
+      const time = row.querySelector('.wp-time').value;
+      const loc  = row.querySelector('.wp-location').value.trim();
+      if (date && time && loc) {
+        add('slot_date', date);
+        add('slot_time', time);
+        add('slot_location', loc);
+      }
     }
   }
 }

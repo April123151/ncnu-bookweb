@@ -32,15 +32,42 @@ cloudinary.config(
     secure=True,
 )
 
-models.Base.metadata.create_all(bind=database.engine)
-
-# Migrations: add columns / tables if not yet present
 try:
-    with database.engine.connect() as _conn:
-        _conn.execute(text("ALTER TABLE users ADD COLUMN line_id VARCHAR(50)"))
-        _conn.commit()
-except Exception:
-    pass
+    models.Base.metadata.create_all(bind=database.engine)
+except Exception as _e:
+    print(f"[WARN] create_all failed: {_e}")
+
+# Migrations: add columns and tables if not yet present
+_migrations = [
+    "ALTER TABLE users ADD COLUMN line_id VARCHAR(50)",
+    # conversations table (pre-order chat)
+    """CREATE TABLE IF NOT EXISTS conversations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        book_id INT NOT NULL,
+        buyer_id INT NOT NULL,
+        created_at DATETIME,
+        UNIQUE KEY uq_conv_book_buyer (book_id, buyer_id),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+        FOREIGN KEY (buyer_id) REFERENCES users(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    # conv_messages table
+    """CREATE TABLE IF NOT EXISTS conv_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        conv_id INT NOT NULL,
+        sender_id INT NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME,
+        FOREIGN KEY (conv_id) REFERENCES conversations(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+]
+for _sql in _migrations:
+    try:
+        with database.engine.connect() as _conn:
+            _conn.execute(text(_sql))
+            _conn.commit()
+    except Exception:
+        pass
 
 app = FastAPI(title="暨大二手書平台")
 app.add_middleware(

@@ -160,12 +160,9 @@ const wp = new WeekPicker(
 );
 
 editForm.addEventListener('submit', function(e) {
-  // For locked books, allow saving with 0 new slots (just basic info edits)
+  // For available books: must have at least one complete slot
   if (!IS_LOCKED && !wp.validate()) { e.preventDefault(); return; }
-  if (wp.selected.size > 0) {
-    const loc = document.getElementById('wpLocation')?.value.trim();
-    if (!loc) { alert('請填寫面交地點！'); e.preventDefault(); return; }
-  }
+  // For locked books: adding new slots is optional (user may just edit basic info)
   wp.injectHiddenInputs(editForm);
 });
 </script>
