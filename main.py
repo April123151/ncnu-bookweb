@@ -791,20 +791,24 @@ async def conv_page(request: Request, conv_id: int, db: Session = Depends(get_db
 
 @app.websocket("/ws/conv/{conv_id}")
 async def websocket_conv(websocket: WebSocket, conv_id: int):
+    await websocket.accept()
+
     uid = websocket.session.get("user_id")
     if not uid:
-        await websocket.close(code=1008, reason="Unauthorized")
+        await websocket.send_json({"error": "Unauthorized"})
+        await websocket.close(code=1008)
         return
 
     db = SessionLocal()
     try:
         conv = db.query(models.Conversation).filter(models.Conversation.id == conv_id).first()
         if not conv or (conv.buyer_id != uid and conv.book.seller_id != uid):
-            await websocket.close(code=1008, reason="Forbidden")
+            await websocket.send_json({"error": "Forbidden"})
+            await websocket.close(code=1008)
             return
 
         user = db.query(models.User).filter(models.User.id == uid).first()
-        await conv_manager.connect(websocket, conv_id)
+        conv_manager._rooms[conv_id].append(websocket)
 
         try:
             while True:
@@ -823,6 +827,9 @@ async def websocket_conv(websocket: WebSocket, conv_id: int):
                 })
         except WebSocketDisconnect:
             conv_manager.disconnect(websocket, conv_id)
+    except Exception as _e:
+        print(f"[WS/conv] error: {_e}", flush=True)
+        conv_manager.disconnect(websocket, conv_id)
     finally:
         db.close()
 
@@ -853,23 +860,28 @@ async def my_chats(request: Request, db: Session = Depends(get_db)):
 
 @app.websocket("/ws/chat/{order_id}")
 async def websocket_chat(websocket: WebSocket, order_id: int):
+    await websocket.accept()
+
     uid = websocket.session.get("user_id")
     if not uid:
-        await websocket.close(code=1008, reason="Unauthorized")
+        await websocket.send_json({"error": "Unauthorized"})
+        await websocket.close(code=1008)
         return
 
     db = SessionLocal()
     try:
         order = db.query(models.Order).filter(models.Order.id == order_id).first()
         if not order or (order.buyer_id != uid and order.book.seller_id != uid):
-            await websocket.close(code=1008, reason="Forbidden")
+            await websocket.send_json({"error": "Forbidden"})
+            await websocket.close(code=1008)
             return
         if order.status == "cancelled":
-            await websocket.close(code=1008, reason="Order cancelled")
+            await websocket.send_json({"error": "Cancelled"})
+            await websocket.close(code=1008)
             return
 
         user = db.query(models.User).filter(models.User.id == uid).first()
-        await manager.connect(websocket, order_id)
+        manager._rooms[order_id].append(websocket)
 
         try:
             while True:
@@ -888,5 +900,8 @@ async def websocket_chat(websocket: WebSocket, order_id: int):
                 })
         except WebSocketDisconnect:
             manager.disconnect(websocket, order_id)
+    except Exception as _e:
+        print(f"[WS/chat] error: {_e}", flush=True)
+        manager.disconnect(websocket, order_id)
     finally:
         db.close()
