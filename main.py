@@ -160,17 +160,15 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def save_upload(upload: UploadFile) -> Optional[str]:
+async def save_upload(upload: UploadFile) -> Optional[str]:
     """Upload to Cloudinary; returns secure URL or None."""
     if not upload or not upload.filename or not allowed_file(upload.filename):
         return None
-    # SpooledTemporaryFile pointer may be at EOF after multipart parsing
-    try:
-        upload.file.seek(0)
-    except Exception:
-        pass
+    data = await upload.read()   # proper async read; always starts at byte 0
+    if not data:
+        return None
     result = cloudinary.uploader.upload(
-        upload.file,
+        data,
         folder="bookweb",
         resource_type="image",
     )
@@ -346,7 +344,7 @@ async def sell(
     upload_errors = 0
     for upload in photos:
         try:
-            fname = save_upload(upload)
+            fname = await save_upload(upload)
             if fname:
                 db.add(models.BookPhoto(book_id=book.id, filename=fname))
         except Exception as _ue:
