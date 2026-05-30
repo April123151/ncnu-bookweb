@@ -37,10 +37,43 @@ try:
 except Exception as _e:
     print(f"[WARN] create_all failed: {_e}")
 
-# Migrations: add columns and tables if not yet present
+# Migrations: ensure all tables exist regardless of create_all success
 _migrations = [
     "ALTER TABLE users ADD COLUMN line_id VARCHAR(50)",
-    # conversations table (pre-order chat)
+    """CREATE TABLE IF NOT EXISTS time_slots (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        book_id INT NOT NULL,
+        date VARCHAR(50),
+        time_str VARCHAR(50),
+        location VARCHAR(200),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS book_photos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        book_id INT NOT NULL,
+        filename VARCHAR(500) NOT NULL,
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS orders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        book_id INT NOT NULL,
+        buyer_id INT NOT NULL,
+        timeslot_id INT,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (book_id) REFERENCES books(id),
+        FOREIGN KEY (buyer_id) REFERENCES users(id),
+        FOREIGN KEY (timeslot_id) REFERENCES time_slots(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        order_id INT NOT NULL,
+        sender_id INT NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
     """CREATE TABLE IF NOT EXISTS conversations (
         id INT AUTO_INCREMENT PRIMARY KEY,
         book_id INT NOT NULL,
@@ -50,7 +83,6 @@ _migrations = [
         FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
         FOREIGN KEY (buyer_id) REFERENCES users(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
-    # conv_messages table
     """CREATE TABLE IF NOT EXISTS conv_messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
         conv_id INT NOT NULL,
@@ -633,6 +665,9 @@ async def edit_book(
                  if d.strip() and t.strip() and l.strip()]
 
     if book.status == "available":
+        if not new_slots:
+            flash(request, "請至少填寫一個完整的面交時段（日期、時間、地點）", "danger")
+            return redirect("edit_book_page", book_id=book_id)
         for slot in list(book.timeslots):
             db.delete(slot)
         db.flush()
