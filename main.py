@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, text
+from sqlalchemy import or_, and_, exists, text
 from typing import List, Optional
 from collections import defaultdict
 import bcrypt as _bcrypt
@@ -92,6 +92,10 @@ _migrations = [
         FOREIGN KEY (conv_id) REFERENCES conversations(id) ON DELETE CASCADE,
         FOREIGN KEY (sender_id) REFERENCES users(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    "ALTER TABLE orders ADD COLUMN buyer_last_read DATETIME NULL",
+    "ALTER TABLE orders ADD COLUMN seller_last_read DATETIME NULL",
+    "ALTER TABLE conversations ADD COLUMN buyer_last_read DATETIME NULL",
+    "ALTER TABLE conversations ADD COLUMN seller_last_read DATETIME NULL",
 ]
 for _sql in _migrations:
     try:
@@ -174,12 +178,72 @@ def render(tpl: str, request: Request, db: Session, ctx: dict = {}):
     flashes = request.session.pop("_flashes", [])
     user = get_session_user(request, db)
     seller_pending = 0
+    msg_unread = 0
     if user:
+        uid = user.id
         seller_pending = (
             db.query(models.Order)
             .join(models.Book, models.Order.book_id == models.Book.id)
-            .filter(models.Book.seller_id == user.id, models.Order.status == "pending")
+            .filter(models.Book.seller_id == uid, models.Order.status == "pending")
             .count()
+        )
+        # Unread: convs as buyer (messages from seller after buyer_last_read)
+        msg_unread += db.query(models.Conversation).filter(
+            models.Conversation.buyer_id == uid,
+            exists().where(and_(
+                models.ConvMessage.conv_id == models.Conversation.id,
+                models.ConvMessage.sender_id != uid,
+                or_(
+                    models.Conversation.buyer_last_read == None,
+                    models.ConvMessage.created_at > models.Conversation.buyer_last_read,
+                ),
+            ))
+        ).count()
+        # Unread: convs as seller (messages from buyer after seller_last_read)
+        msg_unread += (
+            db.query(models.Conversation)
+            .join(models.Book, models.Conversation.book_id == models.Book.id)
+            .filter(
+                models.Book.seller_id == uid,
+                exists().where(and_(
+                    models.ConvMessage.conv_id == models.Conversation.id,
+                    models.ConvMessage.sender_id != uid,
+                    or_(
+                        models.Conversation.seller_last_read == None,
+                        models.ConvMessage.created_at > models.Conversation.seller_last_read,
+                    ),
+                ))
+            ).count()
+        )
+        # Unread: pending orders as buyer (messages from seller after buyer_last_read)
+        msg_unread += db.query(models.Order).filter(
+            models.Order.buyer_id == uid,
+            models.Order.status == "pending",
+            exists().where(and_(
+                models.Message.order_id == models.Order.id,
+                models.Message.sender_id != uid,
+                or_(
+                    models.Order.buyer_last_read == None,
+                    models.Message.created_at > models.Order.buyer_last_read,
+                ),
+            ))
+        ).count()
+        # Unread: pending orders as seller (messages from buyer after seller_last_read)
+        msg_unread += (
+            db.query(models.Order)
+            .join(models.Book, models.Order.book_id == models.Book.id)
+            .filter(
+                models.Book.seller_id == uid,
+                models.Order.status == "pending",
+                exists().where(and_(
+                    models.Message.order_id == models.Order.id,
+                    models.Message.sender_id != uid,
+                    or_(
+                        models.Order.seller_last_read == None,
+                        models.Message.created_at > models.Order.seller_last_read,
+                    ),
+                ))
+            ).count()
         )
     return templates.TemplateResponse(tpl, {
         "request":           request,
@@ -189,6 +253,7 @@ def render(tpl: str, request: Request, db: Session, ctx: dict = {}):
         "dept_groups":       DEPARTMENT_GROUPS,
         "conditions":        CONDITIONS,
         "seller_pending":    seller_pending,
+        "msg_unread":        msg_unread,
         **ctx,
     })
 
@@ -769,6 +834,14 @@ async def chat_page(request: Request, order_id: int, db: Session = Depends(get_d
 
     other_user = order.book.seller if order.buyer_id == uid else order.buyer
     is_buyer = (order.buyer_id == uid)
+
+    from datetime import datetime as _dt
+    if is_buyer:
+        order.buyer_last_read = _dt.utcnow()
+    else:
+        order.seller_last_read = _dt.utcnow()
+    db.commit()
+
     back_url = str(app.url_path_for("my_orders")) if is_buyer else str(app.url_path_for("my_listings"))
     return render("chat.html", request, db, {
         "chat_mode":    "order",
@@ -824,6 +897,14 @@ async def conv_page(request: Request, conv_id: int, db: Session = Depends(get_db
 
     is_buyer = (conv.buyer_id == uid)
     other_user = conv.book.seller if is_buyer else conv.buyer
+
+    from datetime import datetime as _dt
+    if is_buyer:
+        conv.buyer_last_read = _dt.utcnow()
+    else:
+        conv.seller_last_read = _dt.utcnow()
+    db.commit()
+
     back_url = str(app.url_path_for("my_chats"))
     return render("chat.html", request, db, {
         "chat_mode":    "conv",
@@ -901,9 +982,24 @@ async def my_chats(request: Request, db: Session = Depends(get_db)):
                     .order_by(models.Conversation.created_at.desc())
                     .all())
 
+    unread_conv_ids = set()
+    for conv in buyer_convs:
+        if conv.messages:
+            last_msg = conv.messages[-1]
+            if last_msg.sender_id != uid:
+                if conv.buyer_last_read is None or last_msg.created_at > conv.buyer_last_read:
+                    unread_conv_ids.add(conv.id)
+    for conv in seller_convs:
+        if conv.messages:
+            last_msg = conv.messages[-1]
+            if last_msg.sender_id != uid:
+                if conv.seller_last_read is None or last_msg.created_at > conv.seller_last_read:
+                    unread_conv_ids.add(conv.id)
+
     return render("my_chats.html", request, db, {
-        "buyer_convs":  buyer_convs,
-        "seller_convs": seller_convs,
+        "buyer_convs":     buyer_convs,
+        "seller_convs":    seller_convs,
+        "unread_conv_ids": unread_conv_ids,
     })
 
 

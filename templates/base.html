@@ -59,8 +59,11 @@
           </a>
         </li>
         <li>
-          <a href="{{ url_for('my_chats') }}">
+          <a href="{{ url_for('my_chats') }}" style="position:relative">
             <i class="bi bi-chat-dots"></i>訊息
+            {% if msg_unread > 0 %}
+            <span class="nav-notify-badge">{{ msg_unread }}</span>
+            {% endif %}
           </a>
         </li>
         <!-- User dropdown -->

@@ -23,20 +23,25 @@
   <i class="bi bi-bag me-1"></i>我詢問的書籍
 </h2>
 {% for conv in buyer_convs %}
-<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card">
+<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card {% if conv.id in unread_conv_ids %}conv-card-unread{% endif %}">
   {% if conv.book.first_photo %}
     <img src="{{ conv.book.first_photo }}" class="conv-card-thumb" alt="">
   {% else %}
     <div class="conv-card-thumb-ph"><i class="bi bi-book"></i></div>
   {% endif %}
   <div class="conv-card-info">
-    <div class="conv-card-title">{{ conv.book.title }}</div>
+    <div class="conv-card-title">
+      {{ conv.book.title }}
+      {% if conv.id in unread_conv_ids %}
+      <span class="conv-unread-dot"></span>
+      {% endif %}
+    </div>
     <div class="conv-card-sub">
       賣家：{{ conv.book.seller.name }}
       <span class="ms-2 fw-bold" style="color:var(--green-main)">NT${{ conv.book.price }}</span>
     </div>
     {% if conv.messages %}
-    <div class="conv-card-last text-muted">
+    <div class="conv-card-last {% if conv.id in unread_conv_ids %}fw-semibold text-dark{% else %}text-muted{% endif %}">
       {{ conv.messages[-1].sender.name }}：{{ conv.messages[-1].content[:40] }}{% if conv.messages[-1].content|length > 40 %}…{% endif %}
     </div>
     {% else %}
@@ -56,20 +61,25 @@
   <i class="bi bi-person-raised-hand me-1"></i>買家詢問我的書籍
 </h2>
 {% for conv in seller_convs %}
-<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card">
+<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card {% if conv.id in unread_conv_ids %}conv-card-unread{% endif %}">
   {% if conv.book.first_photo %}
     <img src="{{ conv.book.first_photo }}" class="conv-card-thumb" alt="">
   {% else %}
     <div class="conv-card-thumb-ph"><i class="bi bi-book"></i></div>
   {% endif %}
   <div class="conv-card-info">
-    <div class="conv-card-title">{{ conv.book.title }}</div>
+    <div class="conv-card-title">
+      {{ conv.book.title }}
+      {% if conv.id in unread_conv_ids %}
+      <span class="conv-unread-dot"></span>
+      {% endif %}
+    </div>
     <div class="conv-card-sub">
       買家：{{ conv.buyer.name }}
       <span class="ms-2">{{ conv.buyer.department }}</span>
     </div>
     {% if conv.messages %}
-    <div class="conv-card-last text-muted">
+    <div class="conv-card-last {% if conv.id in unread_conv_ids %}fw-semibold text-dark{% else %}text-muted{% endif %}">
       {{ conv.messages[-1].sender.name }}：{{ conv.messages[-1].content[:40] }}{% if conv.messages[-1].content|length > 40 %}…{% endif %}
     </div>
     {% else %}

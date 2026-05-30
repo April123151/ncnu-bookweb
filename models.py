@@ -129,12 +129,14 @@ class TimeSlot(Base):
 class Order(Base):
     __tablename__ = 'orders'
 
-    id          = Column(Integer, primary_key=True)
-    book_id     = Column(Integer, ForeignKey('books.id'),    nullable=False)
-    buyer_id    = Column(Integer, ForeignKey('users.id'),    nullable=False)
-    timeslot_id = Column(Integer, ForeignKey('time_slots.id'))
-    status      = Column(String(20), default='pending')  # pending / completed / cancelled
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    id               = Column(Integer, primary_key=True)
+    book_id          = Column(Integer, ForeignKey('books.id'),    nullable=False)
+    buyer_id         = Column(Integer, ForeignKey('users.id'),    nullable=False)
+    timeslot_id      = Column(Integer, ForeignKey('time_slots.id'))
+    status           = Column(String(20), default='pending')
+    created_at       = Column(DateTime, default=datetime.utcnow)
+    buyer_last_read  = Column(DateTime, nullable=True)
+    seller_last_read = Column(DateTime, nullable=True)
 
     book     = relationship('Book',     back_populates='orders')
     buyer    = relationship('User',     back_populates='orders', foreign_keys=[buyer_id])
@@ -161,10 +163,12 @@ class Conversation(Base):
     __tablename__ = 'conversations'
     __table_args__ = (UniqueConstraint('book_id', 'buyer_id', name='uq_conv_book_buyer'),)
 
-    id         = Column(Integer, primary_key=True)
-    book_id    = Column(Integer, ForeignKey('books.id'), nullable=False)
-    buyer_id   = Column(Integer, ForeignKey('users.id'), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id               = Column(Integer, primary_key=True)
+    book_id          = Column(Integer, ForeignKey('books.id'), nullable=False)
+    buyer_id         = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at       = Column(DateTime, default=datetime.utcnow)
+    buyer_last_read  = Column(DateTime, nullable=True)
+    seller_last_read = Column(DateTime, nullable=True)
 
     book     = relationship('Book', back_populates='conversations')
     buyer    = relationship('User', foreign_keys=[buyer_id])
