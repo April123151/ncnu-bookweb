@@ -87,7 +87,7 @@
            class="cond-pill {% if not selected_cond %}active{% endif %}">
           <span class="cond-dot" style="background:#d1d5db"></span>所有書況
         </a>
-        {% set dot_colors = {'new':'#16a34a','like_new':'#0284c7','good':'#7c3aed','fair':'#d97706','acceptable':'#6b7280'} %}
+        {% set dot_colors = {'new':'#ec4899','like_new':'#0284c7','good':'#7c3aed','fair':'#d97706','acceptable':'#6b7280'} %}
         {% for val, label in conditions %}
         <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_dept %}department={{ selected_dept }}&{% endif %}condition={{ val }}"
            class="cond-pill {% if val == selected_cond %}active{% endif %}">
