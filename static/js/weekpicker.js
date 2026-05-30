@@ -104,14 +104,14 @@ class WeekPicker {
     row.innerHTML = `
       <div>
         <label class="form-label">日期</label>
-        <select class="form-select form-select-sm wp-date">
+        <select class="form-select form-select-sm wp-date" name="slot_date">
           <option value="">選擇日期</option>
           ${this._dateOpts}
         </select>
       </div>
       <div>
         <label class="form-label">時間</label>
-        <select class="form-select form-select-sm wp-time">
+        <select class="form-select form-select-sm wp-time" name="slot_time">
           <option value="">選擇時間</option>
           ${this._timeOpts}
         </select>
@@ -119,7 +119,7 @@ class WeekPicker {
       <div>
         <label class="form-label">地點</label>
         <input type="text" class="form-control form-control-sm wp-location"
-               placeholder="例：圖書館一樓大廳" value="${locVal}">
+               name="slot_location" placeholder="例：圖書館一樓大廳" value="${locVal}">
       </div>
       <div class="d-flex align-items-end pb-1">
         <button type="button" class="btn btn-sm btn-outline-danger wp-del">

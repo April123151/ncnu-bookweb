@@ -126,7 +126,6 @@ const wp = new WeekPicker(document.getElementById('weekPickerMount'));
 
 sellForm.addEventListener('submit', function(e) {
   if (!wp.validate()) { e.preventDefault(); return; }
-  wp.injectHiddenInputs(sellForm);
 });
 
 document.getElementById('photoInput').addEventListener('change', function(){

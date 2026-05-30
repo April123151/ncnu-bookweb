@@ -161,10 +161,7 @@ const wp = new WeekPicker(
 );
 
 editForm.addEventListener('submit', function(e) {
-  // For available books: must have at least one complete slot
   if (!IS_LOCKED && !wp.validate()) { e.preventDefault(); return; }
-  // For locked books: adding new slots is optional (user may just edit basic info)
-  wp.injectHiddenInputs(editForm);
 });
 </script>
 {% endblock %}
