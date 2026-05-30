@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from typing import List, Optional
 import bcrypt as _bcrypt
 from dotenv import load_dotenv
@@ -30,6 +30,14 @@ cloudinary.config(
 )
 
 models.Base.metadata.create_all(bind=database.engine)
+
+# Migration: add line_id column if not exists
+try:
+    with database.engine.connect() as _conn:
+        _conn.execute(text("ALTER TABLE users ADD COLUMN line_id VARCHAR(50)"))
+        _conn.commit()
+except Exception:
+    pass
 
 app = FastAPI(title="暨大二手書平台")
 app.add_middleware(
@@ -111,6 +119,9 @@ async def index(
     q: str = "",
     department: str = "",
     condition: str = "",
+    sort: str = "newest",
+    price_min: str = "",
+    price_max: str = "",
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Book).filter(models.Book.status == "available")
@@ -126,13 +137,28 @@ async def index(
         query = query.filter(models.Book.department == department)
     if condition:
         query = query.filter(models.Book.condition == condition)
-    books = query.order_by(models.Book.created_at.desc()).all()
+    p_min = int(price_min) if price_min.strip().isdigit() else None
+    p_max = int(price_max) if price_max.strip().isdigit() else None
+    if p_min is not None:
+        query = query.filter(models.Book.price >= p_min)
+    if p_max is not None:
+        query = query.filter(models.Book.price <= p_max)
+    if sort == "price_asc":
+        query = query.order_by(models.Book.price.asc())
+    elif sort == "price_desc":
+        query = query.order_by(models.Book.price.desc())
+    else:
+        query = query.order_by(models.Book.created_at.desc())
+    books = query.all()
 
     return render("index.html", request, db, {
         "books": books,
         "q": q,
         "selected_dept": department,
         "selected_cond": condition,
+        "sort": sort,
+        "price_min": price_min,
+        "price_max": price_max,
     })
 
 
@@ -376,6 +402,149 @@ async def my_orders(request: Request, db: Session = Depends(get_db)):
 @app.get("/guide", response_class=HTMLResponse)
 async def guide(request: Request, db: Session = Depends(get_db)):
     return render("guide.html", request, db)
+
+
+# ── Profile ───────────────────────────────────────────────────────────────────
+
+@app.get("/profile/edit", response_class=HTMLResponse)
+async def profile_edit_page(request: Request, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入", "warning")
+        return redirect("login_page")
+    user = db.query(models.User).filter(models.User.id == uid).first()
+    return render("profile_edit.html", request, db, {"edit_user": user})
+
+
+@app.post("/profile/edit")
+async def profile_edit(
+    request: Request,
+    name: str = Form(...),
+    department: str = Form(...),
+    phone: str = Form(""),
+    line_id: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    uid = request.session.get("user_id")
+    if not uid:
+        return redirect("login_page")
+    user = db.query(models.User).filter(models.User.id == uid).first()
+    if not user:
+        return redirect("index")
+    if not name.strip():
+        flash(request, "姓名不能為空", "danger")
+        return redirect("profile_edit_page")
+    user.name = name.strip()
+    user.department = department
+    user.phone = phone.strip()
+    user.line_id = line_id.strip()
+    db.commit()
+    flash(request, "個人資料已更新！", "success")
+    return redirect("profile_edit_page")
+
+
+# ── Edit book ─────────────────────────────────────────────────────────────────
+
+@app.get("/book/{book_id}/edit", response_class=HTMLResponse)
+async def edit_book_page(request: Request, book_id: int, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入", "warning")
+        return redirect("login_page")
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book or book.seller_id != uid:
+        flash(request, "無權限編輯此書籍", "danger")
+        return redirect("my_listings")
+    if book.status == "sold":
+        flash(request, "已售出的書籍無法編輯", "warning")
+        return redirect("my_listings")
+    return render("edit_book.html", request, db, {"book": book})
+
+
+@app.post("/book/{book_id}/edit")
+async def edit_book(
+    request: Request,
+    book_id: int,
+    title: str = Form(...),
+    author: str = Form(""),
+    isbn: str = Form(""),
+    price: int = Form(...),
+    condition: str = Form(...),
+    department: str = Form(...),
+    description: str = Form(""),
+    slot_date: List[str] = Form(default=[]),
+    slot_time: List[str] = Form(default=[]),
+    slot_location: List[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
+    uid = request.session.get("user_id")
+    if not uid:
+        return redirect("login_page")
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book or book.seller_id != uid:
+        flash(request, "無權限編輯此書籍", "danger")
+        return redirect("my_listings")
+    if book.status == "sold":
+        flash(request, "已售出的書籍無法編輯", "warning")
+        return redirect("my_listings")
+    if price < 0:
+        flash(request, "價格不能為負數", "danger")
+        return redirect("edit_book_page", book_id=book_id)
+
+    book.title = title.strip()
+    book.author = author.strip()
+    book.isbn = isbn.strip()
+    book.price = price
+    book.condition = condition
+    book.department = department
+    book.description = description.strip()
+
+    new_slots = [(d.strip(), t.strip(), l.strip())
+                 for d, t, l in zip(slot_date, slot_time, slot_location)
+                 if d.strip() and t.strip() and l.strip()]
+
+    if book.status == "available":
+        for slot in list(book.timeslots):
+            db.delete(slot)
+        db.flush()
+        for d, t, l in new_slots:
+            db.add(models.TimeSlot(book_id=book.id, date=d, time_str=t, location=l))
+    elif book.status == "locked":
+        for d, t, l in new_slots:
+            db.add(models.TimeSlot(book_id=book.id, date=d, time_str=t, location=l))
+
+    db.commit()
+    flash(request, "書籍資訊已更新！", "success")
+    return redirect("book_detail", book_id=book_id)
+
+
+# ── Change timeslot ───────────────────────────────────────────────────────────
+
+@app.post("/order/{order_id}/change-timeslot")
+async def change_timeslot(
+    request: Request,
+    order_id: int,
+    timeslot_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    uid = request.session.get("user_id")
+    if not uid:
+        return redirect("login_page")
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order or order.buyer_id != uid or order.status != "pending":
+        flash(request, "無法修改此訂單", "warning")
+        return redirect("my_orders")
+    slot = db.query(models.TimeSlot).filter(
+        models.TimeSlot.id == timeslot_id,
+        models.TimeSlot.book_id == order.book_id,
+    ).first()
+    if not slot:
+        flash(request, "所選時段不存在", "danger")
+        return redirect("my_orders")
+    order.timeslot_id = timeslot_id
+    db.commit()
+    flash(request, "面交時間已更新！", "success")
+    return redirect("my_orders")
 
 
 @app.post("/book/{book_id}/delete")

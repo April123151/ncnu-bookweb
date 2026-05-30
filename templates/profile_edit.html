@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}編輯個人資料 ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}class="page-wrap-narrow"{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <h1 class="section-title">
+      <i class="bi bi-person-gear text-primary me-2"></i>編輯個人資料
+    </h1>
+    <p class="section-sub">完善聯絡方式，讓有意購買的買家可以主動聯繫您</p>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('profile_edit') }}">
+
+  <!-- 基本資訊 -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span><i class="bi bi-person me-2"></i>基本資訊</span>
+    </div>
+    <div class="form-card-body">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">學號</label>
+          <input type="text" class="form-control bg-light" value="{{ edit_user.student_id }}" disabled>
+          <div class="form-text">學號為登入帳號，無法修改</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">姓名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="name"
+                 value="{{ edit_user.name }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">所屬系所 <span class="text-danger">*</span></label>
+          <select class="form-select" name="department" required>
+            {% for dept in departments %}
+              <option value="{{ dept }}"
+                      {% if dept == edit_user.department %}selected{% endif %}>
+                {{ dept }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 聯絡方式 -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span><i class="bi bi-phone me-2"></i>聯絡方式</span>
+    </div>
+    <div class="form-card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">電話號碼</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-telephone text-muted"></i></span>
+            <input type="tel" class="form-control" name="phone"
+                   placeholder="09xxxxxxxx（選填）"
+                   value="{{ edit_user.phone or '' }}">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">LINE ID</label>
+          <div class="input-group">
+            <span class="input-group-text"
+                  style="background:#06c755;border-color:#06c755;color:#fff">
+              <i class="bi bi-chat-fill"></i>
+            </span>
+            <input type="text" class="form-control" name="line_id"
+                   placeholder="LINE ID（選填）"
+                   value="{{ edit_user.line_id or '' }}">
+          </div>
+          <div class="form-text">填寫後，書籍詳情頁會顯示「加 LINE」連結</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3 mb-0 d-flex gap-2 align-items-start"
+           style="font-size:.83rem">
+        <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+        <div>
+          電話與 LINE ID 會顯示於您上架書籍的詳情頁，方便有意購買的買家主動聯繫。
+          填寫越完整，交易成功率越高。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end pt-2">
+    <a href="{{ url_for('my_listings') }}" class="btn btn-outline-secondary px-4">取消</a>
+    <button type="submit" class="btn btn-primary px-5 fw-semibold">
+      <i class="bi bi-check-lg me-1"></i>儲存變更
+    </button>
+  </div>
+
+</form>
+
+{% endblock %}

@@ -55,6 +55,7 @@ class User(Base):
     name          = Column(String(50), nullable=False)
     department    = Column(String(100), nullable=False)
     phone         = Column(String(20))
+    line_id       = Column(String(50))
     created_at    = Column(DateTime, default=datetime.utcnow)
 
     books  = relationship('Book',  back_populates='seller', foreign_keys='Book.seller_id')

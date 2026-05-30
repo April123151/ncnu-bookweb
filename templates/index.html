@@ -98,6 +98,30 @@
       </div>
     </div>
 
+    <div class="sidebar-card">
+      <div class="sidebar-title"><i class="bi bi-currency-dollar me-1"></i>價格區間</div>
+      <form method="GET" action="{{ url_for('index') }}">
+        {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if selected_dept %}<input type="hidden" name="department" value="{{ selected_dept }}">{% endif %}
+        {% if selected_cond %}<input type="hidden" name="condition" value="{{ selected_cond }}">{% endif %}
+        {% if sort != 'newest' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+        <div class="d-flex align-items-center gap-1 mb-2">
+          <input type="number" class="form-control form-control-sm" name="price_min"
+                 placeholder="最低" value="{{ price_min }}" min="0"
+                 style="font-size:.8rem;padding:.25rem .4rem">
+          <span class="text-muted small flex-shrink-0">～</span>
+          <input type="number" class="form-control form-control-sm" name="price_max"
+                 placeholder="最高" value="{{ price_max }}" min="0"
+                 style="font-size:.8rem;padding:.25rem .4rem">
+        </div>
+        <button type="submit" class="btn btn-sm btn-outline-primary w-100 py-1">套用</button>
+        {% if price_min or price_max %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_dept %}department={{ selected_dept }}&{% endif %}{% if selected_cond %}condition={{ selected_cond }}{% endif %}"
+           class="btn btn-sm btn-link text-muted w-100 mt-1 py-0" style="font-size:.78rem">清除價格篩選</a>
+        {% endif %}
+      </form>
+    </div>
+
     {% if current_user %}
     <div class="sidebar-card" style="border-color:var(--green-border);background:var(--green-soft)">
       <div class="sidebar-title" style="color:var(--green-dark)">我的書架</div>
@@ -124,15 +148,30 @@
   <div class="content-area">
     <div class="content-toolbar">
       <span class="result-info">
-        {% if q or selected_dept or selected_cond %}
+        {% if q or selected_dept or selected_cond or price_min or price_max %}
           篩選結果：<strong>{{ books|length }}</strong> 本書籍
-          {% if q %} ── 關鍵字「{{ q }}」{% endif %}
+          {% if q %} ── 「{{ q }}」{% endif %}
           {% if selected_dept %} ── {{ selected_dept }}{% endif %}
-          {% if selected_cond %} ── 書況：{{ conditions | selectattr('0','eq',selected_cond) | map(attribute='1') | first }}{% endif %}
+          {% if selected_cond %} ── {{ conditions | selectattr('0','eq',selected_cond) | map(attribute='1') | first }}{% endif %}
+          {% if price_min or price_max %} ── NT${{ price_min or '0' }}～{{ price_max or '∞' }}{% endif %}
         {% else %}
           共 <strong>{{ books|length }}</strong> 本書籍上架中
         {% endif %}
       </span>
+      <form method="GET" action="{{ url_for('index') }}" class="d-flex align-items-center gap-1">
+        {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if selected_dept %}<input type="hidden" name="department" value="{{ selected_dept }}">{% endif %}
+        {% if selected_cond %}<input type="hidden" name="condition" value="{{ selected_cond }}">{% endif %}
+        {% if price_min %}<input type="hidden" name="price_min" value="{{ price_min }}">{% endif %}
+        {% if price_max %}<input type="hidden" name="price_max" value="{{ price_max }}">{% endif %}
+        <label class="small text-muted mb-0 me-1 d-none d-md-inline">排序：</label>
+        <select class="form-select form-select-sm" name="sort" onchange="this.form.submit()"
+                style="width:auto;font-size:.8rem;padding:.25rem .6rem;cursor:pointer">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>最新上架</option>
+          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>價格低→高</option>
+          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>價格高→低</option>
+        </select>
+      </form>
     </div>
 
     {% if books %}

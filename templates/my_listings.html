@@ -91,8 +91,27 @@
             {% set ao = book.active_order %}
             {% if book.status == 'locked' and ao %}
             <div class="text-center">
-              <div class="small text-muted mb-1">買家：{{ ao.buyer.name }}</div>
-              <div class="d-flex gap-1 justify-content-center">
+              <div class="small fw-semibold mb-1">買家：{{ ao.buyer.name }}</div>
+              {% if ao.buyer.phone %}
+              <div class="small text-muted mb-1">
+                <i class="bi bi-telephone me-1"></i>
+                <a href="tel:{{ ao.buyer.phone }}" class="text-decoration-none text-muted">{{ ao.buyer.phone }}</a>
+              </div>
+              {% endif %}
+              {% if ao.buyer.line_id %}
+              <div class="small mb-2">
+                <i class="bi bi-chat-fill me-1" style="color:#06c755"></i>
+                <a href="https://line.me/ti/p/~{{ ao.buyer.line_id }}"
+                   target="_blank" rel="noopener" class="text-decoration-none fw-semibold" style="color:#06c755">
+                  {{ ao.buyer.line_id }}
+                </a>
+              </div>
+              {% endif %}
+              <div class="d-flex gap-1 justify-content-center flex-wrap mt-1">
+                <a href="{{ url_for('edit_book_page', book_id=book.id) }}"
+                   class="btn btn-outline-secondary btn-sm" title="編輯書籍">
+                  <i class="bi bi-pencil"></i>
+                </a>
                 <form method="POST" action="{{ url_for('complete_order', order_id=ao.id) }}">
                   <button class="btn btn-success btn-sm fw-semibold"
                           onclick="return confirm('確認交易完成？')">
@@ -108,12 +127,16 @@
             {% elif book.status == 'available' %}
             <div class="d-flex gap-1 justify-content-center">
               <a href="{{ url_for('book_detail', book_id=book.id) }}"
-                 class="btn btn-outline-secondary btn-sm">
+                 class="btn btn-outline-secondary btn-sm" title="查看">
                 <i class="bi bi-eye"></i>
+              </a>
+              <a href="{{ url_for('edit_book_page', book_id=book.id) }}"
+                 class="btn btn-outline-primary btn-sm" title="編輯">
+                <i class="bi bi-pencil"></i>
               </a>
               <form method="POST" action="{{ url_for('delete_book', book_id=book.id) }}">
                 <button class="btn btn-outline-danger btn-sm"
-                        onclick="return confirm('確定刪除此書籍？')">
+                        onclick="return confirm('確定刪除此書籍？')" title="刪除">
                   <i class="bi bi-trash"></i>
                 </button>
               </form>

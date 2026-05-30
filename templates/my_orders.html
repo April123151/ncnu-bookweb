@@ -49,7 +49,8 @@
       {% if order.timeslot %}
       <div class="small mb-1">
         <i class="bi bi-calendar3 me-1 text-muted"></i>
-        {{ order.timeslot.date }} {{ order.timeslot.time_str }}
+        <strong>{{ order.timeslot.date }}</strong>
+        <span class="ms-1">{{ order.timeslot.time_str }}</span>
       </div>
       <div class="small mb-2">
         <i class="bi bi-geo-alt me-1 text-muted"></i>{{ order.timeslot.location }}
@@ -57,10 +58,39 @@
       {% else %}
       <div class="small text-muted mb-2">未選擇時段</div>
       {% endif %}
-      <div class="small text-muted">
-        <i class="bi bi-person me-1"></i>賣家：{{ order.book.seller.name }}
+
+      {% if order.status == 'pending' and order.book.timeslots|length > 0 %}
+      <button type="button" class="btn btn-outline-secondary btn-sm mb-2"
+              data-bs-toggle="modal" data-bs-target="#changeSlot{{ order.id }}">
+        <i class="bi bi-calendar-event me-1"></i>更改時間
+      </button>
+      {% endif %}
+
+      <!-- 賣家聯絡資訊 -->
+      <div class="p-2 rounded mt-1" style="background:#f0fdf4;border:1px solid var(--green-border)">
+        <div class="small fw-semibold mb-1" style="color:var(--green-dark)">
+          <i class="bi bi-person-check me-1"></i>賣家聯絡方式
+        </div>
+        <div class="small">{{ order.book.seller.name }}</div>
         {% if order.book.seller.phone %}
-        <span class="ms-1">（{{ order.book.seller.phone }}）</span>
+        <div class="small mt-1">
+          <i class="bi bi-telephone me-1 text-muted"></i>
+          <a href="tel:{{ order.book.seller.phone }}" class="text-decoration-none text-dark fw-semibold">
+            {{ order.book.seller.phone }}
+          </a>
+        </div>
+        {% endif %}
+        {% if order.book.seller.line_id %}
+        <div class="small mt-1">
+          <i class="bi bi-chat-fill me-1" style="color:#06c755"></i>
+          <a href="https://line.me/ti/p/~{{ order.book.seller.line_id }}"
+             target="_blank" rel="noopener" class="fw-semibold text-decoration-none" style="color:#06c755">
+            {{ order.book.seller.line_id }}
+          </a>
+        </div>
+        {% endif %}
+        {% if not order.book.seller.phone and not order.book.seller.line_id %}
+        <div class="small text-muted">賣家尚未填寫聯絡方式</div>
         {% endif %}
       </div>
     </div>
@@ -91,6 +121,54 @@
 
   </div>
 </div>
+
+{% if order.status == 'pending' and order.book.timeslots|length > 0 %}
+<div class="modal fade" id="changeSlot{{ order.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--green-soft);border-bottom:1px solid var(--green-border)">
+        <h5 class="modal-title fw-bold" style="color:var(--green-dark)">
+          <i class="bi bi-calendar-event me-2"></i>更改面交時間
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('change_timeslot', order_id=order.id) }}">
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            書籍：<strong>{{ order.book.title }}</strong><br>
+            請選擇新的面交時段：
+          </p>
+          {% for slot in order.book.timeslots %}
+          <label class="timeslot-option">
+            <input type="radio" name="timeslot_id" value="{{ slot.id }}"
+                   {% if order.timeslot_id == slot.id %}checked{% endif %} required>
+            <div class="flex-grow-1">
+              <div class="fw-semibold small">
+                <i class="bi bi-calendar3 me-1 text-muted"></i>{{ slot.date }}
+                <span class="ms-2"><i class="bi bi-clock me-1 text-muted"></i>{{ slot.time_str }}</span>
+              </div>
+              <div class="text-muted small mt-1">
+                <i class="bi bi-geo-alt me-1"></i>{{ slot.location }}
+              </div>
+            </div>
+            {% if order.timeslot_id == slot.id %}
+            <span class="badge bg-success ms-2" style="font-size:.7rem">目前</span>
+            {% endif %}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary btn-sm fw-semibold">
+            <i class="bi bi-check-lg me-1"></i>確認更改
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endfor %}
 
 {% else %}
