@@ -164,6 +164,11 @@ def save_upload(upload: UploadFile) -> Optional[str]:
     """Upload to Cloudinary; returns secure URL or None."""
     if not upload or not upload.filename or not allowed_file(upload.filename):
         return None
+    # SpooledTemporaryFile pointer may be at EOF after multipart parsing
+    try:
+        upload.file.seek(0)
+    except Exception:
+        pass
     result = cloudinary.uploader.upload(
         upload.file,
         folder="bookweb",
@@ -338,17 +343,26 @@ async def sell(
     db.add(book)
     db.flush()
 
+    upload_errors = 0
     for upload in photos:
-        fname = save_upload(upload)
-        if fname:
-            db.add(models.BookPhoto(book_id=book.id, filename=fname))
+        try:
+            fname = save_upload(upload)
+            if fname:
+                db.add(models.BookPhoto(book_id=book.id, filename=fname))
+        except Exception as _ue:
+            print(f"[WARN] photo upload failed: {_ue}")
+            upload_errors += 1
 
     for d, t, l in zip(slot_date, slot_time, slot_location):
         if d.strip() and t.strip() and l.strip():
             db.add(models.TimeSlot(book_id=book.id, date=d.strip(),
                                    time_str=t.strip(), location=l.strip()))
     db.commit()
-    flash(request, "書籍上架成功！", "success")
+
+    if upload_errors:
+        flash(request, f"書籍上架成功，但有 {upload_errors} 張圖片上傳失敗（請確認圖片大小與格式）", "warning")
+    else:
+        flash(request, "書籍上架成功！", "success")
     return redirect("book_detail", book_id=book.id)
 
 
