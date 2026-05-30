@@ -7,29 +7,34 @@
 
   <!-- ── 聊天室標頭 ── -->
   <div class="chat-header">
-    <a href="{{ url_for('my_orders') if is_buyer else url_for('my_listings') }}"
-       class="chat-back-btn" title="返回">
+    <a href="{{ back_url }}" class="chat-back-btn" title="返回">
       <i class="bi bi-arrow-left"></i>
     </a>
     <div class="avatar chat-avatar">{{ other_user.name[0] }}</div>
     <div class="chat-header-info">
       <div class="fw-bold">{{ other_user.name }}</div>
       <div class="chat-header-sub">
-        <i class="bi bi-book me-1"></i>{{ order.book.title }}
+        <i class="bi bi-book me-1"></i>{{ book.title }}
         <span class="ms-2">
-          {% if order.status == 'pending' %}
-            <span class="chat-status-dot chat-status-active"></span>交易進行中
-          {% elif order.status == 'completed' %}
-            <span class="chat-status-dot chat-status-done"></span>交易完成
+          {% if chat_mode == 'order' and order %}
+            {% if order.status == 'pending' %}
+              <span class="chat-status-dot chat-status-active"></span>交易進行中
+            {% elif order.status == 'completed' %}
+              <span class="chat-status-dot chat-status-done"></span>交易完成
+            {% else %}
+              <span class="chat-status-dot" style="background:#d1d5db"></span>已取消
+            {% endif %}
+          {% else %}
+            <span class="chat-status-dot chat-status-active"></span>詢問中
           {% endif %}
         </span>
       </div>
     </div>
-    <a href="{{ url_for('book_detail', book_id=order.book.id) }}"
+    <a href="{{ url_for('book_detail', book_id=book.id) }}"
        class="chat-book-thumb ms-auto d-none d-md-block"
        title="查看書籍">
-      {% if order.book.first_photo %}
-        <img src="{{ order.book.first_photo }}" alt="{{ order.book.title }}">
+      {% if book.first_photo %}
+        <img src="{{ book.first_photo }}" alt="{{ book.title }}">
       {% else %}
         <div class="chat-book-thumb-ph"><i class="bi bi-book"></i></div>
       {% endif %}
@@ -42,13 +47,13 @@
     <!-- 系統提示 -->
     <div class="chat-system-msg">
       <span>
-        {% if is_buyer %}與賣家 {{ other_user.name }} 關於《{{ order.book.title }}》的對話
-        {% else %}與買家 {{ other_user.name }} 關於《{{ order.book.title }}》的對話{% endif %}
+        {% if is_buyer %}與賣家 {{ other_user.name }} 關於《{{ book.title }}》的對話
+        {% else %}與買家 {{ other_user.name }} 關於《{{ book.title }}》的對話{% endif %}
       </span>
     </div>
 
     <!-- 歷史訊息 -->
-    {% for msg in order.messages %}
+    {% for msg in messages %}
     <div class="chat-msg {% if msg.sender_id == current_user.id %}chat-msg-self{% else %}chat-msg-other{% endif %}">
       {% if msg.sender_id != current_user.id %}
       <div class="chat-sender-name">{{ msg.sender.name }}</div>
@@ -58,7 +63,7 @@
     </div>
     {% endfor %}
 
-    {% if not order.messages %}
+    {% if not messages %}
     <div class="chat-empty" id="chatEmpty">
       <i class="bi bi-chat-dots"></i>
       <p>尚無訊息，傳送第一則訊息開始溝通吧！</p>
@@ -69,12 +74,12 @@
   </div>
 
   <!-- ── 輸入區 ── -->
-  {% if order.status != 'cancelled' %}
+  {% if can_send %}
   <div class="chat-input-wrap">
     <div class="chat-input-row">
       <textarea id="msgInput" class="form-control chat-textarea"
                 placeholder="輸入訊息…（Enter 送出，Shift+Enter 換行）"
-                maxlength="1000" rows="1" {% if order.status == 'cancelled' %}disabled{% endif %}></textarea>
+                maxlength="1000" rows="1"></textarea>
       <button id="sendBtn" class="chat-send-btn" title="送出">
         <i class="bi bi-send-fill"></i>
       </button>
@@ -93,11 +98,14 @@
 
 {% block scripts %}
 <script>
-const ORDER_ID  = {{ order.id }};
+const CHAT_MODE = {{ '"order"' if chat_mode == 'order' else '"conv"' }};
+const ROOM_ID   = {{ chat_room_id }};
 const MY_ID     = {{ current_user.id }};
-const CAN_SEND  = {{ 'true' if order.status != 'cancelled' else 'false' }};
+const CAN_SEND  = {{ 'true' if can_send else 'false' }};
 const protocol  = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL    = `${protocol}//${location.host}/ws/chat/${ORDER_ID}`;
+const WS_URL    = CHAT_MODE === 'order'
+  ? `${protocol}//${location.host}/ws/chat/${ROOM_ID}`
+  : `${protocol}//${location.host}/ws/conv/${ROOM_ID}`;
 
 let ws = null;
 let reconnectTimer = null;
@@ -145,7 +153,6 @@ function appendMsg(senderId, senderName, content, time, animate = false) {
   html += `<div class="chat-time">${time}</div>`;
   div.innerHTML = html;
 
-  // Insert before the #chatBottom sentinel
   const bottom = document.getElementById('chatBottom');
   messages.insertBefore(div, bottom);
   scrollBottom(animate);

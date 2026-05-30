@@ -115,6 +115,14 @@
     <!-- ── Order / Seller actions ── -->
     {% if current_user and current_user.id != book.seller_id %}
 
+      <!-- 聯絡賣家（詢問）按鈕 -->
+      <div class="mb-3">
+        <a href="{{ url_for('start_chat', book_id=book.id) }}"
+           class="btn btn-outline-primary fw-semibold">
+          <i class="bi bi-chat-dots me-1"></i>聯絡賣家詢問
+        </a>
+      </div>
+
       {% if book.status == 'available' %}
       <div class="order-box">
         <div class="order-box-header">

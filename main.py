@@ -10,6 +10,7 @@ from collections import defaultdict
 import bcrypt as _bcrypt
 from dotenv import load_dotenv
 import os
+import json
 import cloudinary
 import cloudinary.uploader
 from database import SessionLocal
@@ -33,7 +34,7 @@ cloudinary.config(
 
 models.Base.metadata.create_all(bind=database.engine)
 
-# Migration: add line_id column if not exists
+# Migrations: add columns / tables if not yet present
 try:
     with database.engine.connect() as _conn:
         _conn.execute(text("ALTER TABLE users ADD COLUMN line_id VARCHAR(50)"))
@@ -72,31 +73,29 @@ class ConnectionManager:
     def __init__(self):
         self._rooms: dict[int, list[WebSocket]] = defaultdict(list)
 
-    async def connect(self, ws: WebSocket, order_id: int):
+    async def connect(self, ws: WebSocket, room_id: int):
         await ws.accept()
-        self._rooms[order_id].append(ws)
+        self._rooms[room_id].append(ws)
 
-    def disconnect(self, ws: WebSocket, order_id: int):
+    def disconnect(self, ws: WebSocket, room_id: int):
         try:
-            self._rooms[order_id].remove(ws)
+            self._rooms[room_id].remove(ws)
         except ValueError:
             pass
 
-    async def broadcast(self, order_id: int, data: dict):
+    async def broadcast(self, room_id: int, data: dict):
         dead = []
-        for ws in list(self._rooms[order_id]):
+        for ws in list(self._rooms[room_id]):
             try:
                 await ws.send_json(data)
             except Exception:
                 dead.append(ws)
         for ws in dead:
-            self.disconnect(ws, order_id)
-
-    def room_size(self, order_id: int) -> int:
-        return len(self._rooms[order_id])
+            self.disconnect(ws, room_id)
 
 
-manager = ConnectionManager()
+manager      = ConnectionManager()  # order-based chats
+conv_manager = ConnectionManager()  # pre-order conversations
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -493,7 +492,18 @@ async def edit_book_page(request: Request, book_id: int, db: Session = Depends(g
     if book.status == "sold":
         flash(request, "已售出的書籍無法編輯", "warning")
         return redirect("my_listings")
-    return render("edit_book.html", request, db, {"book": book})
+
+    existing_slots = [
+        {"date": s.date, "time": s.time_str, "location": s.location}
+        for s in book.timeslots
+        if book.status == "available"  # only pre-fill for available; locked shows existing as read-only
+    ]
+    default_loc = book.timeslots[0].location if book.timeslots else ""
+    return render("edit_book.html", request, db, {
+        "book": book,
+        "existing_slots_json": json.dumps(existing_slots),
+        "default_location_json": json.dumps(default_loc),
+    })
 
 
 @app.post("/book/{book_id}/edit")
@@ -631,10 +641,134 @@ async def chat_page(request: Request, order_id: int, db: Session = Depends(get_d
 
     other_user = order.book.seller if order.buyer_id == uid else order.buyer
     is_buyer = (order.buyer_id == uid)
+    back_url = str(app.url_path_for("my_orders")) if is_buyer else str(app.url_path_for("my_listings"))
     return render("chat.html", request, db, {
-        "order": order,
-        "other_user": other_user,
-        "is_buyer": is_buyer,
+        "chat_mode":    "order",
+        "chat_room_id": order.id,
+        "other_user":   other_user,
+        "book":         order.book,
+        "messages":     order.messages,
+        "can_send":     order.status != "cancelled",
+        "is_buyer":     is_buyer,
+        "order":        order,
+        "back_url":     back_url,
+    })
+
+
+# ── Pre-order Conversations ───────────────────────────────────────────────────
+
+@app.get("/book/{book_id}/chat", response_class=HTMLResponse)
+async def start_chat(request: Request, book_id: int, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入才能聯絡賣家", "warning")
+        return redirect("login_page")
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404)
+    if book.seller_id == uid:
+        flash(request, "不能與自己聊天", "warning")
+        return redirect("book_detail", book_id=book_id)
+
+    conv = (db.query(models.Conversation)
+              .filter_by(book_id=book_id, buyer_id=uid)
+              .first())
+    if not conv:
+        conv = models.Conversation(book_id=book_id, buyer_id=uid)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+    return redirect("conv_page", conv_id=conv.id)
+
+
+@app.get("/conv/{conv_id}", response_class=HTMLResponse)
+async def conv_page(request: Request, conv_id: int, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入", "warning")
+        return redirect("login_page")
+    conv = db.query(models.Conversation).filter(models.Conversation.id == conv_id).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="對話不存在")
+    if conv.buyer_id != uid and conv.book.seller_id != uid:
+        flash(request, "無權限查看此對話", "danger")
+        return redirect("index")
+
+    is_buyer = (conv.buyer_id == uid)
+    other_user = conv.book.seller if is_buyer else conv.buyer
+    back_url = str(app.url_path_for("my_chats"))
+    return render("chat.html", request, db, {
+        "chat_mode":    "conv",
+        "chat_room_id": conv.id,
+        "other_user":   other_user,
+        "book":         conv.book,
+        "messages":     conv.messages,
+        "can_send":     True,
+        "is_buyer":     is_buyer,
+        "order":        None,
+        "back_url":     back_url,
+    })
+
+
+@app.websocket("/ws/conv/{conv_id}")
+async def websocket_conv(websocket: WebSocket, conv_id: int):
+    uid = websocket.session.get("user_id")
+    if not uid:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+
+    db = SessionLocal()
+    try:
+        conv = db.query(models.Conversation).filter(models.Conversation.id == conv_id).first()
+        if not conv or (conv.buyer_id != uid and conv.book.seller_id != uid):
+            await websocket.close(code=1008, reason="Forbidden")
+            return
+
+        user = db.query(models.User).filter(models.User.id == uid).first()
+        await conv_manager.connect(websocket, conv_id)
+
+        try:
+            while True:
+                content = (await websocket.receive_text()).strip()
+                if not content or len(content) > 1000:
+                    continue
+                msg = models.ConvMessage(conv_id=conv_id, sender_id=uid, content=content)
+                db.add(msg)
+                db.commit()
+                db.refresh(msg)
+                await conv_manager.broadcast(conv_id, {
+                    "sender_id":   uid,
+                    "sender_name": user.name,
+                    "content":     content,
+                    "time":        msg.created_at.strftime("%m/%d %H:%M"),
+                })
+        except WebSocketDisconnect:
+            conv_manager.disconnect(websocket, conv_id)
+    finally:
+        db.close()
+
+
+@app.get("/my-chats", response_class=HTMLResponse)
+async def my_chats(request: Request, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入", "warning")
+        return redirect("login_page")
+
+    buyer_convs = (db.query(models.Conversation)
+                   .filter(models.Conversation.buyer_id == uid)
+                   .order_by(models.Conversation.created_at.desc())
+                   .all())
+
+    seller_convs = (db.query(models.Conversation)
+                    .join(models.Book)
+                    .filter(models.Book.seller_id == uid)
+                    .order_by(models.Conversation.created_at.desc())
+                    .all())
+
+    return render("my_chats.html", request, db, {
+        "buyer_convs":  buyer_convs,
+        "seller_convs": seller_convs,
     })
 
 

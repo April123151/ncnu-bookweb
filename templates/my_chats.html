@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}訊息 ─ 暨大二手書平台{% endblock %}
+{% block content %}
+
+<div class="section-header mb-4">
+  <div>
+    <h1 class="section-title"><i class="bi bi-chat-dots text-primary me-2"></i>訊息</h1>
+    <p class="section-sub">與買家／賣家的所有對話</p>
+  </div>
+</div>
+
+{% if not buyer_convs and not seller_convs %}
+<div class="empty-state">
+  <i class="bi bi-chat"></i>
+  <p>還沒有任何對話</p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">去找書籍</a>
+</div>
+
+{% else %}
+
+{% if buyer_convs %}
+<h2 class="fw-bold mb-3" style="font-size:1rem;color:var(--text-muted)">
+  <i class="bi bi-bag me-1"></i>我詢問的書籍
+</h2>
+{% for conv in buyer_convs %}
+<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card">
+  {% if conv.book.first_photo %}
+    <img src="{{ conv.book.first_photo }}" class="conv-card-thumb" alt="">
+  {% else %}
+    <div class="conv-card-thumb-ph"><i class="bi bi-book"></i></div>
+  {% endif %}
+  <div class="conv-card-info">
+    <div class="conv-card-title">{{ conv.book.title }}</div>
+    <div class="conv-card-sub">
+      賣家：{{ conv.book.seller.name }}
+      <span class="ms-2 fw-bold" style="color:var(--green-main)">NT${{ conv.book.price }}</span>
+    </div>
+    {% if conv.messages %}
+    <div class="conv-card-last text-muted">
+      {{ conv.messages[-1].sender.name }}：{{ conv.messages[-1].content[:40] }}{% if conv.messages[-1].content|length > 40 %}…{% endif %}
+    </div>
+    {% else %}
+    <div class="conv-card-last text-muted">（尚無訊息）</div>
+    {% endif %}
+  </div>
+  <div class="text-muted small flex-shrink-0">
+    {{ conv.created_at.strftime('%m/%d') }}
+    <i class="bi bi-chevron-right ms-1 small"></i>
+  </div>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if seller_convs %}
+<h2 class="fw-bold mb-3 mt-4" style="font-size:1rem;color:var(--text-muted)">
+  <i class="bi bi-person-raised-hand me-1"></i>買家詢問我的書籍
+</h2>
+{% for conv in seller_convs %}
+<a href="{{ url_for('conv_page', conv_id=conv.id) }}" class="conv-card">
+  {% if conv.book.first_photo %}
+    <img src="{{ conv.book.first_photo }}" class="conv-card-thumb" alt="">
+  {% else %}
+    <div class="conv-card-thumb-ph"><i class="bi bi-book"></i></div>
+  {% endif %}
+  <div class="conv-card-info">
+    <div class="conv-card-title">{{ conv.book.title }}</div>
+    <div class="conv-card-sub">
+      買家：{{ conv.buyer.name }}
+      <span class="ms-2">{{ conv.buyer.department }}</span>
+    </div>
+    {% if conv.messages %}
+    <div class="conv-card-last text-muted">
+      {{ conv.messages[-1].sender.name }}：{{ conv.messages[-1].content[:40] }}{% if conv.messages[-1].content|length > 40 %}…{% endif %}
+    </div>
+    {% else %}
+    <div class="conv-card-last text-muted">（尚無訊息）</div>
+    {% endif %}
+  </div>
+  <div class="text-muted small flex-shrink-0">
+    {{ conv.created_at.strftime('%m/%d') }}
+    <i class="bi bi-chevron-right ms-1 small"></i>
+  </div>
+</a>
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

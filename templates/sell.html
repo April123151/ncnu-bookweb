@@ -102,36 +102,9 @@
   <div class="form-card">
     <div class="form-card-header">
       <span><i class="bi bi-calendar-check me-2"></i>可交易時間與地點</span>
-      <button type="button" class="btn btn-sm btn-outline-primary" id="addSlotBtn">
-        <i class="bi bi-plus me-1"></i>新增時段
-      </button>
     </div>
     <div class="form-card-body">
-      <p class="text-muted small mb-3">提供可面交的日期、時間與地點，買家從中選擇後下單</p>
-      <div id="slotsContainer">
-        <div class="slot-row">
-          <div>
-            <label class="form-label">日期</label>
-            <input type="date" class="form-control form-control-sm" name="slot_date">
-          </div>
-          <div>
-            <label class="form-label">時間</label>
-            <input type="time" class="form-control form-control-sm" name="slot_time">
-          </div>
-          <div>
-            <label class="form-label">地點</label>
-            <input type="text" class="form-control form-control-sm" name="slot_location"
-                   placeholder="例：圖書館一樓大廳">
-          </div>
-          <div class="d-flex align-items-end pb-1">
-            <button type="button"
-                    class="btn btn-sm btn-outline-danger remove-slot"
-                    style="visibility:hidden">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-        </div>
-      </div>
+      <div id="weekPickerMount"></div>
     </div>
   </div>
 
@@ -145,15 +118,14 @@
 </form>
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/weekpicker.js') }}"></script>
 <script>
-document.getElementById('addSlotBtn').addEventListener('click', function(){
-  const container = document.getElementById('slotsContainer');
-  const clone = container.querySelector('.slot-row').cloneNode(true);
-  clone.querySelectorAll('input').forEach(i => i.value = '');
-  const removeBtn = clone.querySelector('.remove-slot');
-  removeBtn.style.visibility = 'visible';
-  removeBtn.addEventListener('click', () => clone.remove());
-  container.appendChild(clone);
+const sellForm = document.querySelector('form');
+const wp = new WeekPicker(document.getElementById('weekPickerMount'));
+
+sellForm.addEventListener('submit', function(e) {
+  if (!wp.validate()) { e.preventDefault(); return; }
+  wp.injectHiddenInputs(sellForm);
 });
 
 document.getElementById('photoInput').addEventListener('change', function(){

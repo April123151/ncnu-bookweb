@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -77,10 +77,11 @@ class Book(Base):
     status      = Column(String(20), default='available')  # available / locked / sold
     created_at  = Column(DateTime, default=datetime.utcnow)
 
-    seller    = relationship('User',      back_populates='books',     foreign_keys=[seller_id])
-    photos    = relationship('BookPhoto', back_populates='book',      cascade='all, delete-orphan')
-    timeslots = relationship('TimeSlot',  back_populates='book',      cascade='all, delete-orphan')
-    orders    = relationship('Order',     back_populates='book')
+    seller        = relationship('User',         back_populates='books',         foreign_keys=[seller_id])
+    photos        = relationship('BookPhoto',    back_populates='book',          cascade='all, delete-orphan')
+    timeslots     = relationship('TimeSlot',     back_populates='book',          cascade='all, delete-orphan')
+    orders        = relationship('Order',        back_populates='book')
+    conversations = relationship('Conversation', back_populates='book',          cascade='all, delete-orphan')
 
     @property
     def condition_label(self):
@@ -154,3 +155,32 @@ class Message(Base):
 
     order  = relationship('Order', back_populates='messages')
     sender = relationship('User',  foreign_keys=[sender_id])
+
+
+class Conversation(Base):
+    __tablename__ = 'conversations'
+    __table_args__ = (UniqueConstraint('book_id', 'buyer_id', name='uq_conv_book_buyer'),)
+
+    id         = Column(Integer, primary_key=True)
+    book_id    = Column(Integer, ForeignKey('books.id'), nullable=False)
+    buyer_id   = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    book     = relationship('Book', back_populates='conversations')
+    buyer    = relationship('User', foreign_keys=[buyer_id])
+    messages = relationship('ConvMessage', back_populates='conv',
+                            cascade='all, delete-orphan',
+                            order_by='ConvMessage.created_at')
+
+
+class ConvMessage(Base):
+    __tablename__ = 'conv_messages'
+
+    id         = Column(Integer, primary_key=True)
+    conv_id    = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    sender_id  = Column(Integer, ForeignKey('users.id'),         nullable=False)
+    content    = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    conv   = relationship('Conversation', back_populates='messages')
+    sender = relationship('User', foreign_keys=[sender_id])

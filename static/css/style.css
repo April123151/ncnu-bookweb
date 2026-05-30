@@ -1118,3 +1118,140 @@ footer {
   .chat-input-wrap { padding: .6rem .85rem .7rem; }
   .chat-msg { max-width: 85%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WEEK PICKER
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wp-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wp-table {
+  border-collapse: collapse;
+  min-width: 600px;
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  table-layout: fixed;
+}
+
+.wp-table th,
+.wp-table td {
+  border: 1px solid var(--border);
+  text-align: center;
+  font-size: .75rem;
+  padding: 0;
+}
+
+.wp-head-empty { width: 52px; }
+
+.wp-day-col {
+  min-width: 72px;
+  padding: 5px 3px;
+  font-weight: 600;
+  background: #f9fafb;
+  line-height: 1.4;
+}
+
+.wp-today-col {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.wp-today-tag {
+  display: inline-block;
+  background: var(--green-main);
+  color: #fff;
+  font-size: .62rem;
+  padding: 0 .35rem;
+  border-radius: 99px;
+  margin-top: 1px;
+}
+
+.wp-time-lbl {
+  width: 52px;
+  padding: 1px 6px;
+  color: #888;
+  white-space: nowrap;
+  font-size: .72rem;
+  background: #fafafa;
+  border-right: 1px solid var(--border);
+}
+
+.wp-slot {
+  height: 30px;
+  cursor: pointer;
+  transition: background .07s;
+}
+
+.wp-slot:hover:not(.wp-past) {
+  background: #d1fae5;
+}
+
+.wp-slot.wp-selected {
+  background: var(--green-main) !important;
+}
+
+.wp-slot.wp-past {
+  background: #f3f4f6;
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.wp-hint { font-size: .8rem; }
+
+/* ── Conversations (my-chats) ────────────────────────────────────────────── */
+.conv-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .85rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .65rem;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .15s, border-color .15s;
+  box-shadow: var(--shadow-sm);
+}
+.conv-card:hover {
+  border-color: var(--green-border);
+  box-shadow: var(--shadow);
+  color: inherit;
+}
+.conv-card-thumb {
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.conv-card-thumb-ph {
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  background: var(--green-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #86efac;
+  font-size: 1.4rem;
+}
+.conv-card-info { flex: 1; min-width: 0; }
+.conv-card-title { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-card-sub { font-size: .75rem; color: var(--text-muted); margin-top: .15rem; }
+.conv-card-last { font-size: .78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: .2rem; }
+.conv-unread {
+  background: var(--green-main);
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: .1rem .45rem;
+  flex-shrink: 0;
+}

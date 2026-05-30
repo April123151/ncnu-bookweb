@@ -92,14 +92,11 @@
   <div class="form-card">
     <div class="form-card-header">
       <span><i class="bi bi-calendar-check me-2"></i>可交易時間與地點</span>
-      <button type="button" class="btn btn-sm btn-outline-primary" id="addSlotBtn">
-        <i class="bi bi-plus me-1"></i>新增時段
-      </button>
     </div>
     <div class="form-card-body">
 
       {% if book.status == 'locked' %}
-      <!-- 交易中：顯示現有時段（唯讀）+ 可新增 -->
+      <!-- 交易中：顯示現有時段（唯讀）+ 週選取器新增 -->
       {% set ao = book.active_order %}
       <div class="mb-3">
         <div class="small fw-semibold text-muted mb-2">
@@ -116,9 +113,7 @@
           <span class="flex-grow-1">{{ slot.location }}</span>
           {% if ao and ao.timeslot_id == slot.id %}
           <span class="badge ms-auto flex-shrink-0"
-                style="background:#fef9c3;color:#92400e;font-size:.7rem">
-            買家已選
-          </span>
+                style="background:#fef9c3;color:#92400e;font-size:.7rem">買家已選</span>
           {% endif %}
         </div>
         {% else %}
@@ -127,65 +122,16 @@
       </div>
       <div class="small text-muted mb-3">
         <i class="bi bi-lightbulb me-1"></i>
-        可新增額外時段，讓買家在「我的訂單」頁面更改為新時段。
+        可在下方選取額外時段，讓買家在「我的訂單」頁面更改。
       </div>
+      <div id="weekPickerMount"></div>
       {% else %}
-      <!-- 上架中：完整管理 -->
-      <p class="text-muted small mb-3">
-        修改或新增可面交的日期、時間與地點。儲存後原有時段將全部替換。
+      <!-- 上架中：週選取器完整管理 -->
+      <p class="text-muted small mb-2">
+        點選格子選取可面交時間。儲存後原有時段將全部替換。
       </p>
+      <div id="weekPickerMount"></div>
       {% endif %}
-
-      <div id="slotsContainer">
-        {% if book.status == 'available' %}
-          {% for slot in book.timeslots %}
-          <div class="slot-row">
-            <div>
-              <label class="form-label">日期</label>
-              <input type="date" class="form-control form-control-sm"
-                     name="slot_date" value="{{ slot.date }}">
-            </div>
-            <div>
-              <label class="form-label">時間</label>
-              <input type="time" class="form-control form-control-sm"
-                     name="slot_time" value="{{ slot.time_str }}">
-            </div>
-            <div>
-              <label class="form-label">地點</label>
-              <input type="text" class="form-control form-control-sm"
-                     name="slot_location" value="{{ slot.location }}">
-            </div>
-            <div class="d-flex align-items-end pb-1">
-              <button type="button" class="btn btn-sm btn-outline-danger remove-slot">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-          {% else %}
-          <div class="slot-row" id="emptySlot">
-            <div>
-              <label class="form-label">日期</label>
-              <input type="date" class="form-control form-control-sm" name="slot_date">
-            </div>
-            <div>
-              <label class="form-label">時間</label>
-              <input type="time" class="form-control form-control-sm" name="slot_time">
-            </div>
-            <div>
-              <label class="form-label">地點</label>
-              <input type="text" class="form-control form-control-sm" name="slot_location"
-                     placeholder="例：圖書館一樓大廳">
-            </div>
-            <div class="d-flex align-items-end pb-1">
-              <button type="button" class="btn btn-sm btn-outline-danger remove-slot"
-                      style="visibility:hidden">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-          {% endfor %}
-        {% endif %}
-      </div>
 
     </div>
   </div>
@@ -201,39 +147,26 @@
 </form>
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/weekpicker.js') }}"></script>
 <script>
-function makeSlotRow() {
-  const row = document.createElement('div');
-  row.className = 'slot-row';
-  row.innerHTML = `
-    <div>
-      <label class="form-label">日期</label>
-      <input type="date" class="form-control form-control-sm" name="slot_date">
-    </div>
-    <div>
-      <label class="form-label">時間</label>
-      <input type="time" class="form-control form-control-sm" name="slot_time">
-    </div>
-    <div>
-      <label class="form-label">地點</label>
-      <input type="text" class="form-control form-control-sm" name="slot_location"
-             placeholder="例：圖書館一樓大廳">
-    </div>
-    <div class="d-flex align-items-end pb-1">
-      <button type="button" class="btn btn-sm btn-outline-danger remove-slot">
-        <i class="bi bi-trash"></i>
-      </button>
-    </div>`;
-  row.querySelector('.remove-slot').addEventListener('click', () => row.remove());
-  return row;
-}
+const EXISTING_SLOTS  = {{ existing_slots_json | safe }};
+const DEFAULT_LOC     = {{ default_location_json | safe }};
+const IS_LOCKED       = {{ 'true' if book.status == 'locked' else 'false' }};
 
-document.getElementById('addSlotBtn').addEventListener('click', function () {
-  document.getElementById('slotsContainer').appendChild(makeSlotRow());
-});
+const editForm = document.querySelector('form');
+const wp = new WeekPicker(
+  document.getElementById('weekPickerMount'),
+  { existingSlots: EXISTING_SLOTS, defaultLocation: DEFAULT_LOC }
+);
 
-document.querySelectorAll('.remove-slot').forEach(btn => {
-  btn.addEventListener('click', () => btn.closest('.slot-row').remove());
+editForm.addEventListener('submit', function(e) {
+  // For locked books, allow saving with 0 new slots (just basic info edits)
+  if (!IS_LOCKED && !wp.validate()) { e.preventDefault(); return; }
+  if (wp.selected.size > 0) {
+    const loc = document.getElementById('wpLocation')?.value.trim();
+    if (!loc) { alert('請填寫面交地點！'); e.preventDefault(); return; }
+  }
+  wp.injectHiddenInputs(editForm);
 });
 </script>
 {% endblock %}
