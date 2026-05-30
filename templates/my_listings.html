@@ -21,7 +21,7 @@
 
 {% if locked %}
 <div class="alert d-flex align-items-center gap-3 mb-3 fw-semibold"
-     style="background:#fffbeb;border:1.5px solid #f59e0b;color:#92400e;border-radius:10px">
+     style="background:#fffbeb;border:1.5px solid #f59e0b;color:#6d661a;border-radius:10px">
   <i class="bi bi-bell-fill fs-5 flex-shrink-0" style="color:#f59e0b"></i>
   <span>您有 <strong>{{ locked|length }}</strong> 筆交易進行中！請確認面交時間，完成後點選「完成」以下架書籍。</span>
 </div>
@@ -70,7 +70,7 @@
                      class="thumb-table" alt="">
               {% else %}
                 <div class="thumb-table-ph">
-                  <i class="bi bi-book" style="color:#f9a8d4"></i>
+                  <i class="bi bi-book" style="color:var(--green-mid)"></i>
                 </div>
               {% endif %}
               <div>
@@ -102,7 +102,7 @@
               <div class="small fw-semibold mb-1">買家：{{ ao.buyer.name }}</div>
               {% if ao.timeslot %}
               <div class="small mb-1 px-2 py-1 rounded"
-                   style="background:#fef9c3;border:1px solid #fde68a;color:#92400e;text-align:left;white-space:nowrap">
+                   style="background:#efe58b;border:1px solid #d4c054;color:#6d661a;text-align:left;white-space:nowrap">
                 <i class="bi bi-calendar-check me-1"></i>
                 <strong>{{ ao.timeslot.date }} {{ ao.timeslot.time_str }}</strong><br>
                 <i class="bi bi-geo-alt me-1"></i>{{ ao.timeslot.location }}

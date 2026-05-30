@@ -14,7 +14,7 @@
   <div>
     {% if book.photos %}
       <div id="photoCarousel" class="carousel slide rounded overflow-hidden border"
-           data-bs-ride="false" style="background:#f9fafb">
+           data-bs-ride="false" style="background:#f7f3ef">
         <div class="carousel-inner">
           {% for photo in book.photos %}
           <div class="carousel-item {% if loop.first %}active{% endif %}">
@@ -78,7 +78,7 @@
     </div>
 
     {% if book.description %}
-    <div class="p-3 rounded mb-3" style="background:#f9fafb;border:1px solid var(--border)">
+    <div class="p-3 rounded mb-3" style="background:#f7f3ef;border:1px solid var(--border)">
       <div class="small fw-semibold text-muted mb-1">賣家說明</div>
       <p class="mb-0 small" style="white-space:pre-wrap">{{ book.description }}</p>
     </div>
@@ -173,12 +173,12 @@
 
     {% elif current_user and current_user.id == book.seller_id %}
 
-      <div class="p-3 rounded" style="background:#fdf2f8;border:1px solid var(--green-border)">
+      <div class="p-3 rounded" style="background:var(--green-soft);border:1px solid var(--green-border)">
         <p class="fw-semibold mb-2 small" style="color:var(--green-dark)">
           <i class="bi bi-person-check me-1"></i>這是您上架的書籍
         </p>
         {% if active_order %}
-        <div class="p-3 rounded mb-3" style="background:#fefce8;border:1px solid #fde68a;font-size:.88rem">
+        <div class="p-3 rounded mb-3" style="background:#efe58b;border:1px solid #d4c054;font-size:.88rem">
           <div class="fw-bold mb-1">交易進行中</div>
           <div>買家：<strong>{{ active_order.buyer.name }}</strong>（{{ active_order.buyer.student_id }}）</div>
           {% if active_order.buyer.phone %}

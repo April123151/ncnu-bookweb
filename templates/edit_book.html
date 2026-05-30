@@ -104,7 +104,7 @@
         </div>
         {% for slot in book.timeslots %}
         <div class="d-flex align-items-center gap-2 p-2 rounded mb-2"
-             style="background:#f9fafb;border:1px solid var(--border);font-size:.85rem">
+             style="background:#f7f3ef;border:1px solid var(--border);font-size:.85rem">
           <i class="bi bi-calendar3 text-muted flex-shrink-0"></i>
           <span class="fw-semibold">{{ slot.date }}</span>
           <i class="bi bi-clock text-muted ms-1 flex-shrink-0"></i>
@@ -113,7 +113,7 @@
           <span class="flex-grow-1">{{ slot.location }}</span>
           {% if ao and ao.timeslot_id == slot.id %}
           <span class="badge ms-auto flex-shrink-0"
-                style="background:#fef9c3;color:#92400e;font-size:.7rem">買家已選</span>
+                style="background:#efe58b;color:#6d661a;font-size:.7rem">買家已選</span>
           {% endif %}
         </div>
         {% else %}
