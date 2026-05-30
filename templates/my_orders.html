@@ -101,6 +101,14 @@
         <span class="badge-cond badge-status-locked d-block px-2 py-2 rounded-pill fw-semibold mb-2">
           交易中
         </span>
+        <a href="{{ url_for('chat_page', order_id=order.id) }}"
+           class="btn btn-primary btn-sm w-100 fw-semibold mb-1">
+          <i class="bi bi-chat-fill me-1"></i>聊天室
+          {% set msg_count = order.messages | length %}
+          {% if msg_count > 0 %}
+          <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">{{ msg_count }}</span>
+          {% endif %}
+        </a>
         <form method="POST" action="{{ url_for('cancel_order', order_id=order.id) }}">
           <button type="submit" class="btn btn-outline-danger btn-sm w-100"
                   onclick="return confirm('確認取消此筆訂單？')">
@@ -108,9 +116,13 @@
           </button>
         </form>
       {% elif order.status == 'completed' %}
-        <span class="badge-cond badge-status-available d-block px-2 py-2 rounded-pill fw-semibold">
+        <span class="badge-cond badge-status-available d-block px-2 py-2 rounded-pill fw-semibold mb-2">
           <i class="bi bi-check-circle me-1"></i>交易完成
         </span>
+        <a href="{{ url_for('chat_page', order_id=order.id) }}"
+           class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-chat me-1"></i>查看聊天紀錄
+        </a>
       {% else %}
         <span class="badge-cond badge-status-sold d-block px-2 py-2 rounded-pill fw-semibold">
           已取消

@@ -173,11 +173,20 @@
         <div class="p-3 rounded mb-3" style="background:#fefce8;border:1px solid #fde68a;font-size:.88rem">
           <div class="fw-bold mb-1">交易進行中</div>
           <div>買家：<strong>{{ active_order.buyer.name }}</strong>（{{ active_order.buyer.student_id }}）</div>
-          {% if active_order.buyer.phone %}<div>電話：{{ active_order.buyer.phone }}</div>{% endif %}
-          <div>時間：{{ active_order.timeslot.display if active_order.timeslot else '未選擇' }}</div>
+          {% if active_order.buyer.phone %}
+          <div><i class="bi bi-telephone me-1"></i>{{ active_order.buyer.phone }}</div>
+          {% endif %}
+          {% if active_order.buyer.line_id %}
+          <div><i class="bi bi-chat-fill me-1" style="color:#06c755"></i>LINE：{{ active_order.buyer.line_id }}</div>
+          {% endif %}
+          <div class="mt-1">時間：{{ active_order.timeslot.display if active_order.timeslot else '未選擇' }}</div>
           <div class="text-muted">下單：{{ active_order.created_at.strftime('%Y/%m/%d %H:%M') }}</div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{{ url_for('chat_page', order_id=active_order.id) }}"
+             class="btn btn-primary fw-bold">
+            <i class="bi bi-chat-fill me-1"></i>聊天室
+          </a>
           <form method="POST" action="{{ url_for('complete_order', order_id=active_order.id) }}">
             <button type="submit" class="btn btn-success fw-bold"
                     onclick="return confirm('確認交易完成？書籍將下架。')">

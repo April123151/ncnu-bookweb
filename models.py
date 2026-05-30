@@ -138,3 +138,19 @@ class Order(Base):
     book     = relationship('Book',     back_populates='orders')
     buyer    = relationship('User',     back_populates='orders', foreign_keys=[buyer_id])
     timeslot = relationship('TimeSlot')
+    messages = relationship('Message',  back_populates='order',
+                            cascade='all, delete-orphan',
+                            order_by='Message.created_at')
+
+
+class Message(Base):
+    __tablename__ = 'messages'
+
+    id         = Column(Integer, primary_key=True)
+    order_id   = Column(Integer, ForeignKey('orders.id'), nullable=False)
+    sender_id  = Column(Integer, ForeignKey('users.id'),  nullable=False)
+    content    = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    order  = relationship('Order', back_populates='messages')
+    sender = relationship('User',  foreign_keys=[sender_id])

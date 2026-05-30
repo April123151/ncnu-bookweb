@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -6,11 +6,13 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, text
 from typing import List, Optional
+from collections import defaultdict
 import bcrypt as _bcrypt
 from dotenv import load_dotenv
 import os
 import cloudinary
 import cloudinary.uploader
+from database import SessionLocal
 
 import database, models
 from database import get_db
@@ -62,6 +64,39 @@ def _hash_password(password: str) -> str:
 
 def _verify_password(plain: str, hashed: str) -> bool:
     return _bcrypt.checkpw(plain.encode(), hashed.encode())
+
+
+# ── WebSocket Connection Manager ──────────────────────────────────────────────
+
+class ConnectionManager:
+    def __init__(self):
+        self._rooms: dict[int, list[WebSocket]] = defaultdict(list)
+
+    async def connect(self, ws: WebSocket, order_id: int):
+        await ws.accept()
+        self._rooms[order_id].append(ws)
+
+    def disconnect(self, ws: WebSocket, order_id: int):
+        try:
+            self._rooms[order_id].remove(ws)
+        except ValueError:
+            pass
+
+    async def broadcast(self, order_id: int, data: dict):
+        dead = []
+        for ws in list(self._rooms[order_id]):
+            try:
+                await ws.send_json(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect(ws, order_id)
+
+    def room_size(self, order_id: int) -> int:
+        return len(self._rooms[order_id])
+
+
+manager = ConnectionManager()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -574,3 +609,71 @@ async def delete_book(request: Request, book_id: int, db: Session = Depends(get_
     db.commit()
     flash(request, "書籍已刪除", "info")
     return redirect("my_listings")
+
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
+@app.get("/chat/{order_id}", response_class=HTMLResponse)
+async def chat_page(request: Request, order_id: int, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    if not uid:
+        flash(request, "請先登入", "warning")
+        return redirect("login_page")
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="訂單不存在")
+    if order.buyer_id != uid and order.book.seller_id != uid:
+        flash(request, "無權限查看此聊天室", "danger")
+        return redirect("index")
+    if order.status == "cancelled":
+        flash(request, "已取消的訂單無法使用聊天室", "warning")
+        return redirect("my_orders" if order.buyer_id == uid else "my_listings")
+
+    other_user = order.book.seller if order.buyer_id == uid else order.buyer
+    is_buyer = (order.buyer_id == uid)
+    return render("chat.html", request, db, {
+        "order": order,
+        "other_user": other_user,
+        "is_buyer": is_buyer,
+    })
+
+
+@app.websocket("/ws/chat/{order_id}")
+async def websocket_chat(websocket: WebSocket, order_id: int):
+    uid = websocket.session.get("user_id")
+    if not uid:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+
+    db = SessionLocal()
+    try:
+        order = db.query(models.Order).filter(models.Order.id == order_id).first()
+        if not order or (order.buyer_id != uid and order.book.seller_id != uid):
+            await websocket.close(code=1008, reason="Forbidden")
+            return
+        if order.status == "cancelled":
+            await websocket.close(code=1008, reason="Order cancelled")
+            return
+
+        user = db.query(models.User).filter(models.User.id == uid).first()
+        await manager.connect(websocket, order_id)
+
+        try:
+            while True:
+                content = (await websocket.receive_text()).strip()
+                if not content or len(content) > 1000:
+                    continue
+                msg = models.Message(order_id=order_id, sender_id=uid, content=content)
+                db.add(msg)
+                db.commit()
+                db.refresh(msg)
+                await manager.broadcast(order_id, {
+                    "sender_id":   uid,
+                    "sender_name": user.name,
+                    "content":     content,
+                    "time":        msg.created_at.strftime("%m/%d %H:%M"),
+                })
+        except WebSocketDisconnect:
+            manager.disconnect(websocket, order_id)
+    finally:
+        db.close()

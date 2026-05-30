@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}聊天室 ─ {{ other_user.name }} ─ 暨大二手書平台{% endblock %}
+{% block wrap_attr %}class="page-wrap-chat"{% endblock %}
+{% block content %}
+
+<div class="chat-shell">
+
+  <!-- ── 聊天室標頭 ── -->
+  <div class="chat-header">
+    <a href="{{ url_for('my_orders') if is_buyer else url_for('my_listings') }}"
+       class="chat-back-btn" title="返回">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div class="avatar chat-avatar">{{ other_user.name[0] }}</div>
+    <div class="chat-header-info">
+      <div class="fw-bold">{{ other_user.name }}</div>
+      <div class="chat-header-sub">
+        <i class="bi bi-book me-1"></i>{{ order.book.title }}
+        <span class="ms-2">
+          {% if order.status == 'pending' %}
+            <span class="chat-status-dot chat-status-active"></span>交易進行中
+          {% elif order.status == 'completed' %}
+            <span class="chat-status-dot chat-status-done"></span>交易完成
+          {% endif %}
+        </span>
+      </div>
+    </div>
+    <a href="{{ url_for('book_detail', book_id=order.book.id) }}"
+       class="chat-book-thumb ms-auto d-none d-md-block"
+       title="查看書籍">
+      {% if order.book.first_photo %}
+        <img src="{{ order.book.first_photo }}" alt="{{ order.book.title }}">
+      {% else %}
+        <div class="chat-book-thumb-ph"><i class="bi bi-book"></i></div>
+      {% endif %}
+    </a>
+  </div>
+
+  <!-- ── 訊息列表 ── -->
+  <div class="chat-messages" id="chatMessages">
+
+    <!-- 系統提示 -->
+    <div class="chat-system-msg">
+      <span>
+        {% if is_buyer %}與賣家 {{ other_user.name }} 關於《{{ order.book.title }}》的對話
+        {% else %}與買家 {{ other_user.name }} 關於《{{ order.book.title }}》的對話{% endif %}
+      </span>
+    </div>
+
+    <!-- 歷史訊息 -->
+    {% for msg in order.messages %}
+    <div class="chat-msg {% if msg.sender_id == current_user.id %}chat-msg-self{% else %}chat-msg-other{% endif %}">
+      {% if msg.sender_id != current_user.id %}
+      <div class="chat-sender-name">{{ msg.sender.name }}</div>
+      {% endif %}
+      <div class="chat-bubble">{{ msg.content }}</div>
+      <div class="chat-time">{{ msg.created_at.strftime('%m/%d %H:%M') }}</div>
+    </div>
+    {% endfor %}
+
+    {% if not order.messages %}
+    <div class="chat-empty" id="chatEmpty">
+      <i class="bi bi-chat-dots"></i>
+      <p>尚無訊息，傳送第一則訊息開始溝通吧！</p>
+    </div>
+    {% endif %}
+
+    <div id="chatBottom"></div>
+  </div>
+
+  <!-- ── 輸入區 ── -->
+  {% if order.status != 'cancelled' %}
+  <div class="chat-input-wrap">
+    <div class="chat-input-row">
+      <textarea id="msgInput" class="form-control chat-textarea"
+                placeholder="輸入訊息…（Enter 送出，Shift+Enter 換行）"
+                maxlength="1000" rows="1" {% if order.status == 'cancelled' %}disabled{% endif %}></textarea>
+      <button id="sendBtn" class="chat-send-btn" title="送出">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    <div class="chat-conn-status" id="connStatus">
+      <span class="chat-status-dot chat-status-connecting"></span>連線中…
+    </div>
+  </div>
+  {% else %}
+  <div class="chat-input-wrap text-center text-muted small py-3">
+    <i class="bi bi-lock me-1"></i>訂單已取消，聊天室已關閉
+  </div>
+  {% endif %}
+
+</div>
+
+{% block scripts %}
+<script>
+const ORDER_ID  = {{ order.id }};
+const MY_ID     = {{ current_user.id }};
+const CAN_SEND  = {{ 'true' if order.status != 'cancelled' else 'false' }};
+const protocol  = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL    = `${protocol}//${location.host}/ws/chat/${ORDER_ID}`;
+
+let ws = null;
+let reconnectTimer = null;
+let reconnectDelay = 1500;
+
+// ── DOM refs ──
+const msgInput  = document.getElementById('msgInput');
+const sendBtn   = document.getElementById('sendBtn');
+const messages  = document.getElementById('chatMessages');
+const connEl    = document.getElementById('connStatus');
+
+// ── Helpers ──
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function scrollBottom(smooth = false) {
+  const el = document.getElementById('chatBottom');
+  el?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
+}
+
+function setStatus(text, cls) {
+  if (!connEl) return;
+  connEl.innerHTML = `<span class="chat-status-dot ${cls}"></span>${text}`;
+}
+
+function autoResize() {
+  if (!msgInput) return;
+  msgInput.style.height = 'auto';
+  msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+}
+
+// ── Append a message bubble ──
+function appendMsg(senderId, senderName, content, time, animate = false) {
+  const empty = document.getElementById('chatEmpty');
+  if (empty) empty.remove();
+
+  const isSelf = senderId === MY_ID;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${isSelf ? 'chat-msg-self' : 'chat-msg-other'}${animate ? ' chat-msg-new' : ''}`;
+
+  let html = '';
+  if (!isSelf) html += `<div class="chat-sender-name">${escHtml(senderName)}</div>`;
+  html += `<div class="chat-bubble">${escHtml(content).replace(/\n/g, '<br>')}</div>`;
+  html += `<div class="chat-time">${time}</div>`;
+  div.innerHTML = html;
+
+  // Insert before the #chatBottom sentinel
+  const bottom = document.getElementById('chatBottom');
+  messages.insertBefore(div, bottom);
+  scrollBottom(animate);
+}
+
+// ── WebSocket ──
+function connect() {
+  clearTimeout(reconnectTimer);
+  if (!CAN_SEND) return;
+
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    reconnectDelay = 1500;
+    setStatus('已連線', 'chat-status-active');
+    if (sendBtn) sendBtn.disabled = false;
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      appendMsg(d.sender_id, d.sender_name, d.content, d.time, true);
+    } catch {}
+  };
+
+  ws.onclose = () => {
+    setStatus('已斷線，重新連線中…', 'chat-status-connecting');
+    if (sendBtn) sendBtn.disabled = true;
+    reconnectTimer = setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 1.5, 15000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+// ── Send ──
+function sendMsg() {
+  if (!msgInput || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const content = msgInput.value.trim();
+  if (!content) return;
+  ws.send(content);
+  msgInput.value = '';
+  msgInput.style.height = 'auto';
+  msgInput.focus();
+}
+
+if (sendBtn) {
+  sendBtn.addEventListener('click', sendMsg);
+}
+if (msgInput) {
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMsg();
+    }
+  });
+  msgInput.addEventListener('input', autoResize);
+}
+
+// ── Init ──
+scrollBottom();
+connect();
+</script>
+{% endblock %}
+{% endblock %}
