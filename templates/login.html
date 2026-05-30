@@ -36,6 +36,7 @@
   </p>
 </div>
 
+{% endblock %}
 {% block scripts %}
 <script>
 document.getElementById('togglePwd').addEventListener('click', function(){
@@ -44,5 +45,4 @@ document.getElementById('togglePwd').addEventListener('click', function(){
   this.querySelector('i').className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
 });
 </script>
-{% endblock %}
 {% endblock %}

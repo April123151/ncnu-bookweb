@@ -96,9 +96,10 @@
 
 </div>
 
+{% endblock %}
 {% block scripts %}
 <script>
-const CHAT_MODE = {{ '"order"' if chat_mode == 'order' else '"conv"' }};
+const CHAT_MODE = "{{ chat_mode }}";
 const ROOM_ID   = {{ chat_room_id }};
 const MY_ID     = {{ current_user.id }};
 const CAN_SEND  = {{ 'true' if can_send else 'false' }};
@@ -216,5 +217,4 @@ if (msgInput) {
 scrollBottom();
 connect();
 </script>
-{% endblock %}
 {% endblock %}

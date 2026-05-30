@@ -146,6 +146,7 @@
 
 </form>
 
+{% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/weekpicker.js') }}"></script>
 <script>
@@ -166,5 +167,4 @@ editForm.addEventListener('submit', function(e) {
   wp.injectHiddenInputs(editForm);
 });
 </script>
-{% endblock %}
 {% endblock %}
