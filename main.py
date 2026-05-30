@@ -370,6 +370,13 @@ async def sell(
         flash(request, "價格不能為負數", "danger")
         return redirect("sell_page")
 
+    valid_slots = [(d.strip(), t.strip(), l.strip())
+                   for d, t, l in zip(slot_date, slot_time, slot_location)
+                   if d.strip() and t.strip() and l.strip()]
+    if not valid_slots:
+        flash(request, "請至少填寫一個完整的面交時段（日期、時間、地點）", "danger")
+        return redirect("sell_page")
+
     book = models.Book(
         title=title.strip(), author=author.strip(), isbn=isbn.strip(),
         price=price, condition=condition, department=department,
@@ -390,10 +397,8 @@ async def sell(
             print(f"[WARN] photo upload failed: {_ue}", flush=True)
             upload_errors += 1
 
-    for d, t, l in zip(slot_date, slot_time, slot_location):
-        if d.strip() and t.strip() and l.strip():
-            db.add(models.TimeSlot(book_id=book.id, date=d.strip(),
-                                   time_str=t.strip(), location=l.strip()))
+    for d, t, l in valid_slots:
+        db.add(models.TimeSlot(book_id=book.id, date=d, time_str=t, location=l))
     db.commit()
 
     if upload_errors:
